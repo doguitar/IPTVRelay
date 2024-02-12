@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace IPTVRelay.Library
 {
-    internal class UriClient
+    public class UriClient
     {
         public abstract class UriClientResponse : IDisposable
         {

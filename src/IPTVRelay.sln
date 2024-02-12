@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Test", "IPTVRelay
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Database", "IPTVRelay.Database\IPTVRelay.Database.csproj", "{3075E0C1-FD00-45DD-93CD-03E8D108F120}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IPTVRelay.Blazor", "IPTVRelay.Blazor\IPTVRelay.Blazor\IPTVRelay.Blazor.csproj", "{111C393E-AF56-4CB3-AF69-324245B5D1C4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Blazor", "IPTVRelay.Blazor\IPTVRelay.Blazor\IPTVRelay.Blazor.csproj", "{53C06601-353B-459A-8948-3FB4DF3B04A8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Blazor.Client", "IPTVRelay.Blazor\IPTVRelay.Blazor.Client\IPTVRelay.Blazor.Client.csproj", "{095D2B65-67DE-41BD-B597-EAD5129FA2ED}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +31,14 @@ Global
 		{3075E0C1-FD00-45DD-93CD-03E8D108F120}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3075E0C1-FD00-45DD-93CD-03E8D108F120}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3075E0C1-FD00-45DD-93CD-03E8D108F120}.Release|Any CPU.Build.0 = Release|Any CPU
-		{111C393E-AF56-4CB3-AF69-324245B5D1C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{111C393E-AF56-4CB3-AF69-324245B5D1C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{111C393E-AF56-4CB3-AF69-324245B5D1C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{111C393E-AF56-4CB3-AF69-324245B5D1C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{53C06601-353B-459A-8948-3FB4DF3B04A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53C06601-353B-459A-8948-3FB4DF3B04A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53C06601-353B-459A-8948-3FB4DF3B04A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53C06601-353B-459A-8948-3FB4DF3B04A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

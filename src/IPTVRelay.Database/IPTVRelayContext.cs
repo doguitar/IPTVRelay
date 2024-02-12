@@ -25,8 +25,12 @@ namespace IPTVRelay.Database
         {
             var entries = ChangeTracker
                 .Entries()
-                .Select(e => new { e.State, Entity = e.Entity as ModelBase })
-                .Where(e => e.Entity != null && e.State != EntityState.Unchanged).ToList();
+                .Where(e => e.Entity != null && e.State == EntityState.Modified)
+                .Select(e => e.Entity as ModelBase)
+                .ToList();
+
+            var now = DateTime.UtcNow;
+            await Task.WhenAll(entries.Select(e => Task.Run(() => e!.Modified = now)));
 
             var changed = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
 
@@ -37,8 +41,12 @@ namespace IPTVRelay.Database
         {
             var entries = ChangeTracker
                 .Entries()
-                .Select(e => new { e.State, Entity = e.Entity as ModelBase })
-                .Where(e => e.Entity != null && e.State != EntityState.Unchanged).ToList();
+                .Where(e => e.Entity != null && e.State == EntityState.Modified)
+                .Select(e => e.Entity as ModelBase)
+                .ToList();
+
+            var now = DateTime.UtcNow;
+            Task.WaitAll(entries.Select(e => Task.Run(() => e!.Modified = now)).ToArray());
 
             var changed = base.SaveChanges(acceptAllChangesOnSuccess);
 
@@ -46,62 +54,64 @@ namespace IPTVRelay.Database
         }
 
 
-		public DbSet<Models.M3U> M3U { get; set; }
-		public DbSet<Models.M3UItem> M3UItem { get; set; }
-		public DbSet<Models.M3UItemData> M3UItemData { get; set; }
-		public DbSet<Models.XMLTV> XMLTV { get; set; }
-		public DbSet<Models.XMLTVItem> XMLTVItem { get; set; }
-		public DbSet<Models.XMLTVItemData> XMLTVItemsData { get; set; }
+        public DbSet<Models.M3U> M3U { get; set; }
+        public DbSet<Models.M3UFilter> M3UFilter { get; set; }
+        public DbSet<Models.M3UItem> M3UItem { get; set; }
+        public DbSet<Models.XMLTV> XMLTV { get; set; }
+        public DbSet<Models.XMLTVItem> XMLTVItem { get; set; }
+        public DbSet<Models.Mapping> Mapping { get; set; }
+        public DbSet<Models.MappingFilter> MappingFilter { get; set; }
         public DbSet<Models.Settings> Settings { get; set; }
         public DbSet<Models.Setting> Setting { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
-            modelBuilder.Entity<Models.M3U>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
+            modelBuilder.Entity<Models.M3U>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+            });
+            modelBuilder.Entity<Models.M3UFilter>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+                e.HasIndex(m => m.M3UId);
+            });
 
-            modelBuilder.Entity<Models.M3UItem>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
-            modelBuilder.Entity<Models.M3UItem>()
-               .HasIndex(m => m.M3UId);
+            modelBuilder.Entity<Models.XMLTV>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+            });
+            modelBuilder.Entity<Models.XMLTVItem>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+                e.HasIndex(m => m.XMLTVId);
+            });
 
-            modelBuilder.Entity<Models.M3UItemData>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
-            modelBuilder.Entity<Models.M3UItemData>()
-               .HasIndex(m => m.M3UItemId);
+            modelBuilder.Entity<Models.Mapping>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+            });
+            modelBuilder.Entity<Models.MappingFilter>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+                e.HasIndex(m => m.MappingId);
+            });
 
+            modelBuilder.Entity<Models.Settings>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+            });
 
-            modelBuilder.Entity<Models.XMLTV>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
+            modelBuilder.Entity<Models.Setting>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+            });
+            modelBuilder.Entity<Models.Setting>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+                e.HasIndex(m => m.SettingsId);
+            });
 
-            modelBuilder.Entity<Models.XMLTVItem>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
-            modelBuilder.Entity<Models.XMLTVItem>()
-               .HasIndex(m => m.XMLTVId);
-
-            modelBuilder.Entity<Models.XMLTVItemData>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
-            modelBuilder.Entity<Models.XMLTVItemData>()
-               .HasIndex(m => m.XMLTVItemId);
-
-            
-
-            modelBuilder.Entity<Models.Settings>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
-
-            modelBuilder.Entity<Models.Setting>()
-               .HasIndex(m => m.Id)
-               .IsUnique();
-            modelBuilder.Entity<Models.Setting>()
-               .HasIndex(m => m.SettingsId);
 
             base.OnModelCreating(modelBuilder);
         }

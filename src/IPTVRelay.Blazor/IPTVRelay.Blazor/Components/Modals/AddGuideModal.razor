@@ -1,0 +1,65 @@
+﻿@using IPTVRelay.Library
+
+@code {
+    private XMLTV? Guide { get; set; }
+    private string Content { get; set; }
+
+    [Parameter] public EventCallback<Tuple<string, XMLTV>> OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public long GuideId { get; set; }
+}
+
+<div class="row">
+
+    <div class="col-md-12">
+        <div class="input-group mb-3">
+            <InputText class="form-control" placeholder="Name" aria-label="Name" aria-describedby="basic-addon2" @bind-Value=Guide.Name></InputText>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="input-group mb-3">
+            <InputText class="form-control" placeholder="XMLTV Location" aria-label="XMLTV Location" aria-describedby="basic-addon2" @bind-Value=Guide.Uri></InputText>
+            <div class="input-group-append">
+                <Button Color="ButtonColor.Primary" @onclick=Load>Load</Button>
+            </div><div class="input-group-append">
+                <span class="input-group-text" id="basic-addon2">@Guide?.Items.Count</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="float-end">
+            <Button Color="ButtonColor.Primary" @onclick=@Save>Save</Button>
+            <Button Color="ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
+        </div>
+    </div>
+</div>
+@code {
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        Guide = await DB.XMLTV.Include(p => p.Items).FirstOrDefaultAsync(p => p.Id == GuideId) ?? new XMLTV();
+        if (Guide.Id > 0)
+        {
+            Content = await Utility.XMLTV.Populate(Config, Guide);
+        }
+    }
+
+    public async Task Save()
+    {
+        await OnSave.InvokeAsync(new (Content, Guide));
+    }
+    public async Task Cancel()
+    {
+
+        await OnCancel.InvokeAsync();
+    }
+    public async Task Load()
+    {
+        Content = await Utility.XMLTV.Populate(Config, Guide);
+    }
+}

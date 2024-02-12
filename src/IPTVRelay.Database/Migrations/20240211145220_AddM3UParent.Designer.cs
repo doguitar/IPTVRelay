@@ -3,6 +3,7 @@ using System;
 using IPTVRelay.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPTVRelay.Database.Migrations
 {
     [DbContext(typeof(IPTVRelayContext))]
-    partial class IPTVRelayContextModelSnapshot : ModelSnapshot
+    [Migration("20240211145220_AddM3UParent")]
+    partial class AddM3UParent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
@@ -77,9 +80,6 @@ namespace IPTVRelay.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Id")
-                        .IsUnique();
-
                     b.HasIndex("M3UId");
 
                     b.ToTable("M3UFilter");
@@ -142,33 +142,21 @@ namespace IPTVRelay.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("Channel")
+                    b.Property<long?>("ChannelId")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
-                    b.Property<long?>("M3UId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<DateTime>("Modified")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<long?>("XMLTVItemId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
+
+                    b.HasIndex("ChannelId");
 
                     b.HasIndex("Id")
                         .IsUnique();
-
-                    b.HasIndex("M3UId");
-
-                    b.HasIndex("XMLTVItemId");
 
                     b.ToTable("Mapping");
                 });
@@ -198,9 +186,6 @@ namespace IPTVRelay.Database.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Id")
-                        .IsUnique();
 
                     b.HasIndex("MappingId");
 
@@ -309,12 +294,35 @@ namespace IPTVRelay.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Id")
-                        .IsUnique();
-
-                    b.HasIndex("XMLTVId");
-
                     b.ToTable("XMLTVItem");
+                });
+
+            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVItemData", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Modified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("XMLTVItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("XMLTVItemId");
+
+                    b.ToTable("XMLTVItemsData");
                 });
 
             modelBuilder.Entity("IPTVRelay.Database.Models.M3U", b =>
@@ -346,17 +354,11 @@ namespace IPTVRelay.Database.Migrations
 
             modelBuilder.Entity("IPTVRelay.Database.Models.Mapping", b =>
                 {
-                    b.HasOne("IPTVRelay.Database.Models.M3U", "M3U")
+                    b.HasOne("IPTVRelay.Database.Models.XMLTV", "Channel")
                         .WithMany()
-                        .HasForeignKey("M3UId");
+                        .HasForeignKey("ChannelId");
 
-                    b.HasOne("IPTVRelay.Database.Models.XMLTVItem", "XMLTVItem")
-                        .WithMany()
-                        .HasForeignKey("XMLTVItemId");
-
-                    b.Navigation("M3U");
-
-                    b.Navigation("XMLTVItem");
+                    b.Navigation("Channel");
                 });
 
             modelBuilder.Entity("IPTVRelay.Database.Models.MappingFilter", b =>
@@ -377,11 +379,11 @@ namespace IPTVRelay.Database.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVItem", b =>
+            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVItemData", b =>
                 {
-                    b.HasOne("IPTVRelay.Database.Models.XMLTV", null)
-                        .WithMany("Items")
-                        .HasForeignKey("XMLTVId")
+                    b.HasOne("IPTVRelay.Database.Models.XMLTVItem", null)
+                        .WithMany("Data")
+                        .HasForeignKey("XMLTVItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -406,9 +408,9 @@ namespace IPTVRelay.Database.Migrations
                     b.Navigation("List");
                 });
 
-            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTV", b =>
+            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVItem", b =>
                 {
-                    b.Navigation("Items");
+                    b.Navigation("Data");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,11 +1,11 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
 using IPTVRelay.Database.Models;
 
 namespace IPTVRelay.Library
 {
     public static class M3UParser
     {
-
         public static async Task<List<M3UItem>?> Parse(Uri uri)
         {
             using var response = await UriClient.GetAsync(uri);
@@ -40,7 +40,7 @@ namespace IPTVRelay.Library
                 case '#':
                     if (ParseComment(queue, out var data))
                     {
-                        item.Data = data.Select(kv=>new M3UItemData { Key = kv.Key, Value = kv.Value }).ToList();
+                        item.Data = data.Select(kv => new M3UItemData { Key = kv.Key, Value = kv.Value }).ToList();
                     }
                     break;
                 default:
@@ -53,7 +53,6 @@ namespace IPTVRelay.Library
             }
             return false;
         }
-
         private static bool ParseUrl(Uri baseUri, Queue<char> line, out string? url)
         {
             url = null;
@@ -66,7 +65,6 @@ namespace IPTVRelay.Library
             }
             return false;
         }
-
         private static bool ParseComment(Queue<char> line, out Dictionary<string, string>? data)
         {
             data = null;
@@ -80,7 +78,7 @@ namespace IPTVRelay.Library
                 {
                     var key = ReadUntil(line, c => c == '=');
                     line.TryDequeue(out _);
-                    if(key.StartsWith(',') && line.Count == 0)
+                    if (key.StartsWith(',') && line.Count == 0)
                     {
                         data.Add("TrackTitle", key.Substring(1));
                     }
@@ -103,6 +101,32 @@ namespace IPTVRelay.Library
 
             }
             return false;
+        }
+
+
+        public static Task<StringBuilder> Create(List<M3UItem> items)
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine("#EXTM3U");
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                if (item != null)
+                {
+                    var data = item.Data?.Where(d => d?.Key != null)?.ToDictionary(d => d!.Key!, d => d!.Value);
+                    var title = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(item.Url) && data != null)
+                    {
+                        _ = data.TryGetValue("TrackTitle", out title) || data.TryGetValue("tvg-name", out title);
+                        data.Remove("TrackTitle");
+                        builder.AppendLine($"#EXTINF:-1 {string.Join(" ", data.Select(kv => $"{kv.Key}=\"{kv.Value}\""))},{title}");
+                        builder.AppendLine(item.Url);
+                    }
+                }
+            }
+
+            return Task.FromResult(builder);
         }
 
         private static string ReadUntil(Queue<char> line, Func<char, bool> test, char? escape = null)

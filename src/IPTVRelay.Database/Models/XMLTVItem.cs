@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,7 +11,9 @@ namespace IPTVRelay.Database.Models
     {
         public string? ChannelId { get; set; }
         public string? Logo { get; set; }
-        public virtual List<XMLTVItemData> Data { get; set; } = new List<XMLTVItemData>();
+
+        [NotMapped]
+        public List<XMLTVItemData> Data { get; set; } = new List<XMLTVItemData>();
 
         public long XMLTVId { get; set; }
     }

@@ -1,0 +1,138 @@
+﻿@page "/playlists"
+@using Components.Modals;
+@attribute [StreamRendering]
+
+@rendermode InteractiveServer
+
+@code {
+    public class M3UView
+    {
+        public long Id;
+        public long Count;
+        public string? Uri;
+        public string? Name;
+    }
+
+    private List<M3UView>? playlists;
+    private Modal modal = default!;
+}
+
+<PageTitle>Playlists</PageTitle>
+
+<h1>Playlists</h1>
+
+<Modal @ref="modal" />
+
+@if (playlists == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <Button @onclick=Add>Add</Button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Uri</th>
+                <th>Count</th>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in playlists)
+            {
+                <tr>
+                    <td style="white-space:nowrap">@p.Name</td>
+                    <td style="width:100%">@p.Uri</td>
+                    <td style="white-space:nowrap">@p.Count</td>
+                    <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(p.Id))>Edit</Button></td>
+                    <td style="white-space:nowrap"><Button Color="ButtonColor.Secondary" @onclick=@(()=>Child(p.Id, p.Name))>Create child</Button></td>
+                    <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(p.Id))>Delete</Button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        playlists = await DB.M3U.OrderBy(m => m.Created).Select(m => new M3UView { Id = m.Id, Name = m.Name, Uri = m.Uri, Count = m.Count }).ToListAsync();
+    }
+
+    protected async Task Add()
+    {
+        await modal.ShowAsync<AddPlaylistModal>("Add Playlist",
+        parameters: new Dictionary<string, object> {
+            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<M3U>(this, Added) } });
+    }
+    protected async Task Child(long playlistId, string name)
+    {
+        var file = Utility.M3U.GetFileInfo(Config, new M3U{Id=playlistId});
+        var playlist = new M3U { ParentId = playlistId, Uri = $"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}", Name=$"{name} - Child" };
+        await DB.M3U.AddAsync(playlist);
+        await DB.SaveChangesAsync();
+
+        if (playlist != null)
+        {
+            await modal.ShowAsync<AddPlaylistModal>("Edit Playlist",
+            parameters: new Dictionary<string, object> {
+            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<M3U>(this, Added) },
+            { nameof(AddPlaylistModal.PlaylistId), playlist.Id }});
+        }
+
+
+    }
+    protected async Task Delete(long playlistId)
+    {
+        var p = new M3U { Id = playlistId };
+        DB.Attach(p);
+        DB.Remove(p);
+        await DB.SaveChangesAsync();
+        playlists.Remove(playlists.FirstOrDefault(pl => pl.Id == p.Id));
+    }
+    protected async Task Edit(long playlistId)
+    {
+        var playlist = await DB.M3U.FirstOrDefaultAsync(p => p.Id == playlistId);
+        if (playlist != null)
+        {
+            await modal.ShowAsync<AddPlaylistModal>("Edit Playlist",
+            parameters: new Dictionary<string, object> {
+            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<M3U>(this, Added) },
+            { nameof(AddPlaylistModal.PlaylistId), playlist.Id }});
+        }
+    }
+    public async void Added(M3U playlist)
+    {
+        await modal.HideAsync();
+        if (playlist != null)
+        {
+            try
+            {
+                if (playlist.Id > 0)
+                {
+                    DB.Attach(playlist);
+                }
+                else
+                {
+                    await DB.AddAsync(playlist);
+                }
+                await DB.SaveChangesAsync();
+
+                var file = Utility.M3U.GetFileInfo(Config, playlist);
+                var content = await Library.M3UParser.Create(playlist.Items);
+                File.WriteAllText(file.FullName, content.ToString());
+
+                playlists?.Add(new M3UView { Count = playlist.Count, Id = playlist.Id, Uri = playlist.Uri });
+            }
+            catch (Exception e)
+            {
+
+            }
+        }
+    }
+}

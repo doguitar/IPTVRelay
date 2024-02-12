@@ -1,0 +1,57 @@
+﻿@typeparam TFilter where TFilter : Filter, new()
+
+@code {
+
+    private TFilter Current = new();
+
+    [Parameter] public List<TFilter> Filters { get; set; } = [];
+    [Parameter] public EventCallback<TFilter> OnTest { get; set; }
+    [Parameter] public EventCallback<TFilter> OnApply { get; set; }
+}
+
+<table>
+    <tr><th>Type</th><th>Value</th><th>Invert</th><th></th><th></th></tr>
+    @foreach (var f in Filters)
+    {
+        <tr>
+            <td>@f.FilterType.ToString()</td>
+            <td>@f.FilterContent</td>
+            <td>@f.Invert.ToString()</td>
+            <td><Button Color="ButtonColor.Danger" @onclick=@(()=>Filters.Remove(f))>Delete</Button></td>
+        </tr>
+    }
+    <tr>
+        <td>
+            <Dropdown>
+                <DropdownToggleButton Color="ButtonColor.Secondary">@(Enum.GetName<Database.Enums.FilterType>(Current.FilterType))</DropdownToggleButton>
+                <DropdownMenu>
+                    @foreach (var t in Enum.GetValues<Database.Enums.FilterType>())
+                    {
+                        <DropdownItem Type="ButtonType.Link" @onclick=@((a)=>OnFilterTypeChanged(t))>@(Enum.GetName<Database.Enums.FilterType>(t))</DropdownItem>
+                    }
+                </DropdownMenu>
+            </Dropdown>
+        </td>
+        <td><InputText @bind-Value=Current.FilterContent></InputText></td>
+        <td><InputCheckbox @bind-Value=Current.Invert></InputCheckbox></td>
+        <td><Button Color="ButtonColor.Primary" @onclick=@((a)=>Test())>Test</Button></td>
+        <td><Button Color="ButtonColor.Success" @onclick=@((a)=>Apply())>Apply</Button></td>
+    </tr>
+</table>
+
+
+@code {
+    private async Task Test()
+    {
+        await OnTest.InvokeAsync(Current);
+    }
+    private async Task Apply()
+    {
+        await OnApply.InvokeAsync(Current);
+        Current = new();
+    }
+    protected void OnFilterTypeChanged(Database.Enums.FilterType filterType)
+    {
+        Current.FilterType = filterType;
+    }
+}

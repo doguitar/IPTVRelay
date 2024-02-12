@@ -1,0 +1,84 @@
+﻿@page "/channels"
+@using Components.Modals;
+@attribute [StreamRendering]
+
+@rendermode InteractiveServer
+
+@code {
+    private class MappingView
+    {
+        public MappingView(Database.Models.Mapping mapping)
+        {
+            Mapping = mapping;
+        }
+        public Database.Models.Mapping Mapping { get; }
+        public string ChannelString
+        {
+            get => Mapping.Channel.ToString();
+            set
+            {
+                if (long.TryParse(value, out var parsed))
+                {
+                    Mapping.Channel = parsed;
+                }
+            }
+        }
+    }
+
+    private List<MappingView> Mappings { get; set; }
+}
+
+
+
+<PageTitle>Channels</PageTitle>
+
+<h1>Channels</h1>
+<Button Color="ButtonColor.Primary" @onclick=@(Generate)>Save and Generate</Button>
+<div class="row">
+    <div class="col-md-12">
+        <table class="channels">
+            @{
+                long previous = 0;
+                foreach (var g in Mappings.GroupBy(m => m.Mapping.Channel))
+                {
+                    var list = g.OrderBy(g => g.Mapping.Name).ToArray();
+                    var start = Math.Max(g.Key, previous);
+                    for (long i = 0; i < list.LongLength; i++)
+                    {
+                        previous = g.Key + i;
+                        var m = list[i];
+                        <tr>
+                            <td class="targetChannel">
+                                <InputText @bind-Value=@m.ChannelString></InputText>
+                            </td>
+                            <td class="actualChannel">
+                                @(previous)
+                            </td>
+                            <td class="name">
+                                <InputText @bind-Value=@m.Mapping.Name></InputText>
+                            </td>
+                        </tr>
+                    }
+                }
+            }
+        </table>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Mappings = await DB.Mapping
+            .Include(m => m.XMLTVItem)
+            .Include(m => m.M3U)
+            .Include(m => m.Filters)
+            .OrderBy(m => m.Channel).ThenBy(m => m.Name)
+            .Select(m => new MappingView(m)).ToListAsync();
+    }
+    protected async Task Generate()
+    {
+        await DB.SaveChangesAsync();
+        await Utility.M3U.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
+        await Utility.XMLTV.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
+    }
+}

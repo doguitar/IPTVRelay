@@ -3,6 +3,7 @@ using System;
 using IPTVRelay.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPTVRelay.Database.Migrations
 {
     [DbContext(typeof(IPTVRelayContext))]
-    partial class IPTVRelayContextModelSnapshot : ModelSnapshot
+    [Migration("20240211190837_FixIndexes")]
+    partial class FixIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
@@ -142,7 +145,7 @@ namespace IPTVRelay.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("Channel")
+                    b.Property<ulong>("Channel")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("Created")
@@ -377,15 +380,6 @@ namespace IPTVRelay.Database.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVItem", b =>
-                {
-                    b.HasOne("IPTVRelay.Database.Models.XMLTV", null)
-                        .WithMany("Items")
-                        .HasForeignKey("XMLTVId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("IPTVRelay.Database.Models.M3U", b =>
                 {
                     b.Navigation("Filters");
@@ -404,11 +398,6 @@ namespace IPTVRelay.Database.Migrations
             modelBuilder.Entity("IPTVRelay.Database.Models.Settings", b =>
                 {
                     b.Navigation("List");
-                });
-
-            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTV", b =>
-                {
-                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

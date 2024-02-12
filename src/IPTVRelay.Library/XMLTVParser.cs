@@ -7,20 +7,25 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Xml;
 using IPTVRelay.Database.Models;
+using Microsoft.Extensions.Options;
 
 namespace IPTVRelay.Library
 {
     public static class XMLTVParser
     {
-        public static async Task<List<XMLTVItem>?> Parse(Uri uri)
+        public static async Task<string?> Parse(Uri uri)
         {
             using var response = await UriClient.GetAsync(uri);
-
-            if (!(response?.IsSuccess ?? default)) return null;
-
-            using var stream = await response!.ReadAsStreamAsync();
-            var doc = new System.Xml.XmlDocument();
-            doc.Load(stream);
+            if (!(response?.IsSuccess ?? default)) return null;            
+            using var stream = await response!.ReadAsStreamAsync(); 
+            StreamReader reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            return content;
+        }
+        public static async Task<List<XMLTVItem>?> Parse(string content)
+        {
+            var doc = new XmlDocument();
+            doc.LoadXml(content);
 
             var channels = doc.SelectNodes("/tv/channel");
 
@@ -36,10 +41,15 @@ namespace IPTVRelay.Library
                         {
                             var item = new XMLTVItem() { ChannelId = id };
                             bag.Add(item);
-                            item.Data = c?.ChildNodes?.Cast<XmlNode>()
-                                .Select(n => new { n.Name, n.InnerText })
-                                .Where(i => !string.IsNullOrWhiteSpace(i.InnerText))
-                                .Select(i=> new XMLTVItemData { Key = i.Name, Value = i.InnerText }).ToList();
+                            var items = c?.ChildNodes?.Cast<XmlNode>()
+                                    ?.Select(n => new { n?.Name, n?.InnerText })
+                                    ?.Where(i => !string.IsNullOrWhiteSpace(i?.InnerText))
+                                    ?.Select(i => new XMLTVItemData { Key = i?.Name, Value = i?.InnerText })?.ToList();
+
+                            if (items?.Count > 0)
+                            {
+                                item.Data = items;
+                            }
 
                             var url = c?.SelectSingleNode("icon")?.Attributes?.GetNamedItem("src")?.Value;
                             if (url != null)

@@ -3,6 +3,7 @@ using System;
 using IPTVRelay.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPTVRelay.Database.Migrations
 {
     [DbContext(typeof(IPTVRelayContext))]
-    partial class IPTVRelayContextModelSnapshot : ModelSnapshot
+    [Migration("20240211200707_AddXMLTVItemsToDB")]
+    partial class AddXMLTVItemsToDB
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
@@ -142,7 +145,7 @@ namespace IPTVRelay.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<long>("Channel")
+                    b.Property<ulong>("Channel")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("Created")
