@@ -12,12 +12,11 @@
         public bool Filtered;
     }
 
-    private List<M3U>? playlists;
-    private List<XMLTV>? guides;
+    private List<Database.Models.Mapping> Mappings { get; set; }
+    private List<M3U>? Playlists { get; set; }
+    private List<XMLTV>? Guides { get; set; }
 
     private Modal modal = default!;
-    private Dropdown ddlPlaylists = default!;
-    private Dropdown ddlGuides = default!;
 
     private XMLTV? SelectedGuide;
     private XMLTVItem? SelectedChannel;
@@ -35,118 +34,88 @@
 <h1>Mapping</h1>
 
 <Modal @ref="modal" />
-
-<div class="row">
-    <div class="col-md-6">
-        <!-- Content for the first column -->
-        @if (guides == null)
-        {
-            <p><em>Loading...</em></p>
-        }
-        else
-        {
-            @if (SelectedGuide == null)
-            {
-                <h3>Guides</h3>
-                <Dropdown @ref="ddlGuides">
-                    <DropdownToggleButton Color="ButtonColor.Secondary">@(SelectedGuide?.Name ?? "Guides")</DropdownToggleButton>
-                    <DropdownMenu>
-                        @foreach (var g in guides)
-                        {
-                            <DropdownItem @onclick=@(()=>OnGuideChanged(g)) Type="ButtonType.Link">@g.Name</DropdownItem>
-                        }
-                    </DropdownMenu>
-                </Dropdown>
-            }
-            else if (SelectedChannel == null)
-            {
-                <h3>@SelectedGuide.Name</h3>
-                <h3>Channels</h3>
-                <Button @onclick=@(()=>SelectedGuide=null) Color="ButtonColor.Danger">Cancel</Button>
-                <table>
-                    <tr><th></th><th>Channel</th><th>ChannelId</th></tr>
-                    @foreach (var c in SelectedGuide.Items)
-                    {
-                        <tr>
-                            <td><Button Color="ButtonColor.Primary" @onclick=@(()=>OnSelectChannel(c))>Select</Button></td>
-                            <td>@(c.Data.Where(d => d.Key == "display-name")?.FirstOrDefault()?.Value ?? c.ChannelId)</td>
-                            <td>@c.ChannelId</td>
-                        </tr>
-                    }
-                </table>
-            }
-            else
-            {
-                <h3>@SelectedGuide.Name</h3>
-                <h4>@(SelectedChannel.Data.Where(d => d.Key == "display-name")?.FirstOrDefault()?.Value ?? SelectedChannel.ChannelId)</h4>
-
-                <Button disabled=@(FilteredItems?.Count != 1) @onclick=@Save Color="ButtonColor.Primary">Save</Button>
-                <Button @onclick=@(()=>SelectedChannel=null) Color="ButtonColor.Danger">Cancel</Button>
-                <table>
-                    <tr><th>Key</th><th>Value</th></tr>
-                    @foreach (var d in SelectedChannel.Data)
-                    {
-                        <tr>
-                            <td>@d.Key</td>
-                            <td>@d.Value</td>
-                        </tr>
-                    }
-                </table>
-
-            }
-        }
-    </div>
-</div>
-
-@if (SelectedChannel != null && SelectedPlaylist != null && FilteredItems?.Count > 0)
+@if (Mappings == null)
 {
-    <div class="row">
-        <Filter TFilter="MappingFilter" Filters="Filters" OnApply="@((f)=>OnNewFilterApply(f))" OnTest="@((f)=>OnNewFilterTest(f))" />
-    </div>
+    <p><em>Loading...</em></p>
 }
-<div class="row">
-    <div class="col-md-6">
-        <!-- Content for the first column -->
-        @if (SelectedGuide != null)
-        {
-            if (playlists == null)
+else
+{
+    <Button Color="ButtonColor.Primary" @onclick=Add>Add</Button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Target Channel</th>
+                <th>Channel Name</th>
+                <th>Channel Id</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var m in Mappings)
             {
-                <p><em>Loading...</em></p>
+                <tr>
+                    <td style="white-space:nowrap">@m.Channel</td>
+                    <td style="white-space:nowrap">@m.Name</td>
+                    <td style="width:100%">@m.XMLTVItem?.ChannelId</td>
+                    <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(m.Id))>Edit</Button></td>
+                    <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(m.Id))>Delete</Button></td>
+                </tr>
             }
-            else
-            {
-                <Dropdown @ref="ddlPlaylists">
-                    <DropdownToggleButton Color="ButtonColor.Secondary">@(SelectedPlaylist?.Name.ToString() ?? "Playlists")</DropdownToggleButton>
-                    <DropdownMenu>
-                        @foreach (var p in playlists)
-                        {
-                            <DropdownItem @onclick=@(()=>OnPlaylistChanged(p)) Type="ButtonType.Link">@p.Name</DropdownItem>
-                        }
-                    </DropdownMenu>
-                </Dropdown>
-            }
-        }
-        @if (SelectedPlaylist != null)
-        {
-            <table>
-                <tr><th>Title</th><th>Url</th></tr>
-                @foreach (var c in FilteredItems)
-                {
-                    <tr class="@(string.Join(" ", new [] {c.Filtered? "filtered" : string.Empty}))">
-                        <td>@(c.Item.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? c.Item.Url)</td>
-                        <td>@c.Item.Url</td>
-                    </tr>
-                }
-            </table>
-        }
-    </div>
-</div>
+        </tbody>
+    </table>
+}
 
 @code {
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        playlists = await DB.M3U.OrderBy(m => m.Created).ToListAsync();
-        guides = await DB.XMLTV.OrderBy(m => m.Created).ToListAsync();
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            await Load();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    protected async Task Load()
+    {
+        Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
+        Playlists = await DB.M3U.OrderBy(m => m.Created).ToListAsync();
+        Guides = await DB.XMLTV.OrderBy(m => m.Created).ToListAsync();
+    }
+
+    protected async Task Edit(long id)
+    {
+        await modal.ShowAsync<AddMappingModal>("Edit Mapping",
+            parameters: new Dictionary<string, object> {
+            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<long>(this, Edited) },
+            { nameof(AddMappingModal.MappingId), id }});
+
+    }
+    protected async Task Delete(long id)
+    {
+        var mapping = await DB.Mapping.Include(m=>m.Filters).Where(m => m.Id == id).FirstOrDefaultAsync();
+        if (mapping != null)
+        {
+            DB.Remove(mapping);
+            Mappings.Remove(mapping);
+            await DB.SaveChangesAsync();
+        }
+    }
+    protected async Task Add()
+    {
+        await modal.ShowAsync<AddMappingModal>("Add Mapping",
+            parameters: new Dictionary<string, object> {
+            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<long>(this, Added) },
+            { nameof(AddMappingModal.MappingId), 0L }});
+
+    }
+    public async Task Edited(long mappingId)
+    {
+        Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
+    }
+    public async Task Added(long mappingId)
+    {
+        Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
     }
 
     protected async Task OnGuideChanged(XMLTV guide)

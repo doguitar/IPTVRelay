@@ -50,7 +50,7 @@ h1:focus {
     border-color: #929292;
 }
 
-tr.filtered {
+div.filtered {
     background-color: #ff000060;
 }
 
