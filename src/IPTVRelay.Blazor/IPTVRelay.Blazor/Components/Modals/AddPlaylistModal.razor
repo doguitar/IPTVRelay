@@ -59,7 +59,7 @@
 @if (preview)
 {
     <div class="row">
-        <div class="col-md-12" style="height:50vh; overflow-y:scroll; overflow-x:clip">
+        <div class="col-md-12">
             <h4>Preview</h4>
             <table style="width:100%; table-layout:fixed;">
                 <tr><th>Title</th><th>Context</th></tr>
@@ -96,9 +96,15 @@
             {
                 var item = FilteredItems[i];
                 item.Filtered = Library.FilterHelper.DoFilter(item.Item, i, FilteredItems.Count, filter);
+                if (!item.Filtered)
+                {
+                    FilteredItems.Remove(item);
+                    FilteredItems.Insert(0, item);
+                }
                 InvokeAsync(StateHasChanged);
             }
         });
+        FilteredItems = FilteredItems.OrderBy(i => i.Filtered).ToList();
     }
 
     protected async Task OnNewFilterApply(M3UFilter filter)

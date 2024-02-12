@@ -21,7 +21,7 @@
 
 <h1>Playlists</h1>
 
-<Modal @ref="modal" />
+<Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" />
 
 @if (playlists == null)
 {
@@ -58,8 +58,16 @@ else
 }
 
 @code {
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            await Load();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    protected async Task Load()
     {
         playlists = await DB.M3U.OrderBy(m => m.Created).Select(m => new M3UView { Id = m.Id, Name = m.Name, Uri = m.Uri, Count = m.Count }).ToListAsync();
     }
@@ -89,11 +97,10 @@ else
     }
     protected async Task Delete(long playlistId)
     {
-        var p = new M3U { Id = playlistId };
-        DB.Attach(p);
-        DB.Remove(p);
+        var p = DB.M3U.Include(p=>p.Filters).Where(p=>p.Id == playlistId);
+        DB.RemoveRange(p);
         await DB.SaveChangesAsync();
-        playlists.Remove(playlists.FirstOrDefault(pl => pl.Id == p.Id));
+        await Load();
     }
     protected async Task Edit(long playlistId)
     {
@@ -134,5 +141,6 @@ else
 
             }
         }
+        await Load();
     }
 }

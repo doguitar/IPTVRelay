@@ -7,36 +7,45 @@
     [Parameter] public List<TFilter> Filters { get; set; } = [];
     [Parameter] public EventCallback<TFilter> OnTest { get; set; }
     [Parameter] public EventCallback<TFilter> OnApply { get; set; }
+    [Parameter] public EventCallback<TFilter> OnDelete { get; set; }
 }
 
-<table>
-    <tr><th>Type</th><th>Value</th><th>Invert</th><th></th><th></th></tr>
+<table class="filterTable">
+    <tr>
+        <th class="filterType">Type</th>
+        <th class="filterContent">Value</th>
+        <th class="filterInvert">Invert</th>
+        <th class="filterButton"></th>
+        <th></th>
+    </tr>
+    <tr>
+        <td>
+            <Dropdown Size="Size.Small">
+                <DropdownActionButton Style="width: 5em;" Color="ButtonColor.Secondary">@(Current.FilterType.AsString(EnumFormat.Description))</DropdownActionButton>
+                <DropdownToggleButton Color="ButtonColor.Secondary" />
+                <DropdownMenu>
+                    @foreach (var t in Enum.GetValues<Database.Enums.FilterType>())
+                    {
+                        <DropdownItem Type="ButtonType.Link" @onclick=@((a)=>FilterTypeChanged(t))>@(t.AsString(EnumFormat.Description))</DropdownItem>
+                    }
+                </DropdownMenu>
+            </Dropdown>
+        </td>
+        <td><InputText @bind-Value=Current.FilterContent></InputText></td>
+        <td><Switch @bind-Value="Current.Invert" /></td>
+        <td><Button Color="ButtonColor.Primary" Disabled=@(Current.FilterType == Database.Enums.FilterType.None) @onclick=@((a)=>Test())>Test</Button></td>
+        <td><Button Color="ButtonColor.Success" Disabled=@(Current.FilterType == Database.Enums.FilterType.None) @onclick=@((a)=>Apply())>Apply</Button></td>
+    </tr>
     @foreach (var f in Filters)
     {
         <tr>
             <td>@f.FilterType.ToString()</td>
             <td>@f.FilterContent</td>
             <td>@f.Invert.ToString()</td>
-            <td><Button Color="ButtonColor.Danger" @onclick=@(()=>Filters.Remove(f))>Delete</Button></td>
+            <td><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(f))>Delete</Button></td>
+            <td></td>
         </tr>
     }
-    <tr>
-        <td>
-            <Dropdown>
-                <DropdownToggleButton Color="ButtonColor.Secondary">@(Enum.GetName<Database.Enums.FilterType>(Current.FilterType))</DropdownToggleButton>
-                <DropdownMenu>
-                    @foreach (var t in Enum.GetValues<Database.Enums.FilterType>())
-                    {
-                        <DropdownItem Type="ButtonType.Link" @onclick=@((a)=>OnFilterTypeChanged(t))>@(Enum.GetName<Database.Enums.FilterType>(t))</DropdownItem>
-                    }
-                </DropdownMenu>
-            </Dropdown>
-        </td>
-        <td><InputText @bind-Value=Current.FilterContent></InputText></td>
-        <td><InputCheckbox @bind-Value=Current.Invert></InputCheckbox></td>
-        <td><Button Color="ButtonColor.Primary" @onclick=@((a)=>Test())>Test</Button></td>
-        <td><Button Color="ButtonColor.Success" @onclick=@((a)=>Apply())>Apply</Button></td>
-    </tr>
 </table>
 
 
@@ -48,10 +57,23 @@
     private async Task Apply()
     {
         await OnApply.InvokeAsync(Current);
-        Current = new();
+        Current = new() { FilterType = Current.FilterType };
     }
-    protected void OnFilterTypeChanged(Database.Enums.FilterType filterType)
+    private async Task Delete(TFilter filter)
+    {
+        await OnDelete.InvokeAsync(filter);
+    }
+    protected void FilterTypeChanged(Database.Enums.FilterType filterType)
     {
         Current.FilterType = filterType;
+    }
+
+    public void SetFilterText(string text)
+    {
+        Current.FilterContent = text;
+    }
+    public void SetFilterType(Database.Enums.FilterType type)
+    {
+        Current.FilterType = type;
     }
 }

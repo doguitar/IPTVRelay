@@ -50,7 +50,7 @@ h1:focus {
     border-color: #929292;
 }
 
-div.filtered {
+tr.filtered, div.filtered {
     background-color: #ff000060;
 }
 
@@ -78,7 +78,7 @@ table.channels {
 
             table.channels td.targetChannel input {
                 text-align: right;
-                width: 3em;
+                width: 6em;
             }
 
         table.channels td.actualChannel {
@@ -94,3 +94,30 @@ table.channels {
             table.channels td.name input {
                 width: 100%
             }
+
+.tabbed {
+    margin-left: 1em;
+}
+
+.subtext {
+    font: 10px;
+}
+
+table.filterTable {
+    width:100%;
+}
+
+    table.filterTable .filterType {
+        width: 6em;
+    }
+
+    table.filterTable .filterContent {
+        width:100%;
+    }
+
+    button.btn{
+        min-width:5em;
+    }
+        button.btn.dropdown-toggle {
+            min-width: 0em;
+        }

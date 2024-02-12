@@ -1,5 +1,14 @@
 ﻿@using IPTVRelay.Library
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
+
+@code {
+    public async ValueTask DisposeAsync()
+    {
+        await JS.InvokeVoidAsync("disposeVideo", "my-video");
+    }
+}
 @code {
 
     protected class FilteredItem
@@ -13,6 +22,7 @@
 
     private Dropdown ddlPlaylists = default!;
     private Dropdown ddlGuides = default!;
+    private Filter<MappingFilter> filter = default!;
 
     [Parameter] public EventCallback<long> OnSave { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
@@ -28,6 +38,8 @@
     private string ChannelFilter = string.Empty;
     private List<FilteredItem> FilteredItems = [];
     private List<MappingFilter> Filters = [];
+
+    private Dictionary<long, List<XMLTVItem>> ParsedGuides = new();
 }
 
 <div class="row">
@@ -80,15 +92,27 @@
                 }
                 else
                 {
-                    <Filter TFilter="MappingFilter" Filters="Filters" OnApply="@((f)=>ApplyFilter(f))" OnTest="@((f)=>TestFilter(f))" />
-                    <div style="max-height: 80vh; overflow-y:scroll;">
+                    var i = 0;
+                    <Filter @ref="filter" TFilter="MappingFilter" Filters="Filters" OnApply="@((f)=>ApplyFilter(f))" OnTest="@((f)=>TestFilter(f))" />
+
+                    <div>
+
                         @foreach (var fi in FilteredItems)
                         {
+                            i++;
                             <div class="@(string.Join(" ", new [] {fi.Filtered? "filtered" : string.Empty}))">
                                 @(fi?.Item?.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? fi?.Item?.Url ?? string.Empty)
+                                @foreach (var data in fi?.Item?.Data?.Select(d => $"{d.Key} : {d.Value}") ?? [])
+                                {
+                                    <div class="tabbed subtext">
+                                        @data
+                                    </div>
+                                }
+                                <Button @onclick=@(async ()=>await JS.InvokeVoidAsync("initVideo", "video-"+i.ToString()))>Preview</Button>
                             </div>
                         }
                     </div>
+
                 }
             }
         }
@@ -116,7 +140,12 @@
 
     protected async Task GuideSelected(XMLTV guide)
     {
-        guide.Items = (await XMLTVParser.Parse(await Utility.XMLTV.Populate(Config, guide))).OrderBy(c => c.ChannelId).ToList();
+        if (!ParsedGuides.TryGetValue(guide.Id, out var items))
+        {
+            items = (await XMLTVParser.Parse(await Utility.XMLTV.Populate(Config, guide))).OrderBy(c => c.ChannelId).ToList();
+            ParsedGuides[guide.Id] = items;
+        }
+        guide.Items = items;
         SelectedGuide = guide;
     }
     protected async Task ChannelSelected(XMLTVItem channel)
@@ -128,6 +157,16 @@
         SelectedPlaylist = playlist;
         SelectedItems = (await Utility.M3U.Populate(Config, playlist)).Items;
         FilteredItems = SelectedItems.Select(c => new FilteredItem { Filtered = false, Item = c }).ToList();
+
+        if (MappingId == 0)
+        {
+            var values = SelectedChannel.Data.Select(kv => kv.Value).Where(v => !string.IsNullOrWhiteSpace(v));
+            var matches = values.Select(v => System.Text.RegularExpressions.Regex.Matches(v, "\\b[a-z0-9]+\\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Where(m => m.Success).Select(m => m.Value));
+            var tokens = matches.SelectMany(t => t);
+
+            filter.SetFilterText($"\\b({string.Join('|', tokens)})\\b");
+            filter.SetFilterType(Database.Enums.FilterType.Regex);
+        }
     }
     protected async Task TestFilter(MappingFilter filter)
     {

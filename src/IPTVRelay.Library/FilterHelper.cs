@@ -17,7 +17,7 @@ namespace IPTVRelay.Library
             switch (filter.FilterType)
             {
                 case Database.Enums.FilterType.Contains:
-                    if (context.Contains(filter.FilterContent))
+                    if (context.ToLowerInvariant().Contains(filter.FilterContent.ToLowerInvariant()))
                     {
                         filtered = !filtered;
                     }
