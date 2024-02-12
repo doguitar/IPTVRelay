@@ -399,3 +399,5 @@ FodyWeavers.xsd
 /src/IPTVRelay.Test/data
 /src/IPTVRelay.Blazor/IPTVRelay.Blazor/data
 /src/IPTVRelay.Blazor/IPTVRelay.Blazor/IPTVRelay.db
+/src/IPTVRelay.Blazor/IPTVRelay.Blazor/IPTVRelay.db-shm
+/src/IPTVRelay.Blazor/IPTVRelay.Blazor/IPTVRelay.db-wal
