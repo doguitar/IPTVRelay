@@ -46,7 +46,7 @@ namespace IPTVRelay.Blazor
                 }
                 else
                 {
-                    playlist.Items = await M3UParser.Parse(new Uri($"file:\\{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
+                    playlist.Items = await M3UParser.Parse(new Uri($"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
                 }
 
                 if (applyFilters && playlist.Filters.Count > 0)

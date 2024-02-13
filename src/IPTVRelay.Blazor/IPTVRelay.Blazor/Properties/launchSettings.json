@@ -37,11 +37,11 @@
       "launchBrowser": true,
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
       "environmentVariables": {
-        "ASPNETCORE_HTTPS_PORTS": "8081",
         "ASPNETCORE_HTTP_PORTS": "8080"
       },
       "publishAllPorts": true,
-      "useSSL": true
+      "useSSL": false,
+      "DockerfileRunArguments": "-v ../data:/data -e UMASK=022 -e PORT=8080 -e IPTV_DATA_FOLDER=/data/ -e IPTV_PORT=8080 -p 8080:8080/tcp"
     }
   },
   "$schema": "http://json.schemastore.org/launchsettings.json",

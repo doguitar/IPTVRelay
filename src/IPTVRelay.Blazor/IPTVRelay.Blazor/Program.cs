@@ -70,14 +70,12 @@ namespace IPTVRelay.Blazor
                     app.Urls.Add($"http://*:{port}");
                 }
 
+
                 var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
                 recurringJobManager.AddOrUpdate<Utility.Jobs.UpdateJob>(
                     "UPDATE",
                     (j) => j.Update(),
                     Cron.Daily(DateTime.Now.Hour, DateTime.Now.Minute));
-
-
-
             }
 
             if (dataDirectory != null)

@@ -1,5 +1,9 @@
 #See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
+ARG UID
+ARG PID
+ARG UMASK
+
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER app
 WORKDIR /app
@@ -23,8 +27,14 @@ RUN dotnet publish "./IPTVRelay.Blazor.csproj" -c $BUILD_CONFIGURATION -o /app/p
 
 ENV IPTV_DATA_FOLDER="/data"
 ENV IPTV_PORT="8080"
+ENV UID=$UID
+ENV PID=$PID
+ENV UMASK=$UMASK
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "IPTVRelay.Blazor.dll"]
+USER $UID:$PID
+COPY ["IPTVRelay.Blazor/IPTVRelay.Blazor/entrypoint.sh", "/app/entrypoint.sh"]
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
