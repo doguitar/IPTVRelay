@@ -5,7 +5,7 @@
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "IPTV_DATA_FOLDER": "data/",
+        "IPTV_DATA_FOLDER": "../../../data/",
         "IPTV_PORT": "8080"
       },
       "dotnetRunMessages": true,

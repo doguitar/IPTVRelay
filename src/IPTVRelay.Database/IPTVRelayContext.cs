@@ -56,7 +56,6 @@ namespace IPTVRelay.Database
 
         public DbSet<Models.M3U> M3U { get; set; }
         public DbSet<Models.M3UFilter> M3UFilter { get; set; }
-        public DbSet<Models.M3UItem> M3UItem { get; set; }
         public DbSet<Models.XMLTV> XMLTV { get; set; }
         public DbSet<Models.XMLTVItem> XMLTVItem { get; set; }
         public DbSet<Models.Mapping> Mapping { get; set; }

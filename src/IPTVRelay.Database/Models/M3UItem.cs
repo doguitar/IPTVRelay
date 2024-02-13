@@ -27,5 +27,14 @@ namespace IPTVRelay.Database.Models
             }
             return Context;
         }
+        public override int GetHashCode()
+        {
+            return Url?.GetHashCode() ?? Id.GetHashCode();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj != null && obj is M3UItem && GetHashCode().Equals(obj.GetHashCode());
+        }
     }
 }

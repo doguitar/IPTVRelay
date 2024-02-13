@@ -29,7 +29,7 @@ namespace IPTVRelay.Library
 
             var channels = doc.SelectNodes("/tv/channel");
 
-            var bag = new ConcurrentBag<XMLTVItem>();
+            var bag = new ConcurrentDictionary<string, XMLTVItem>();
             if ((channels?.Count > 0))
             {
 
@@ -40,7 +40,6 @@ namespace IPTVRelay.Library
                         if (!string.IsNullOrEmpty(id))
                         {
                             var item = new XMLTVItem() { ChannelId = id };
-                            bag.Add(item);
                             var items = c?.ChildNodes?.Cast<XmlNode>()
                                     ?.Select(n => new { n?.Name, n?.InnerText })
                                     ?.Where(i => !string.IsNullOrWhiteSpace(i?.InnerText))
@@ -50,6 +49,7 @@ namespace IPTVRelay.Library
                             {
                                 item.Data = items;
                             }
+                            bag.AddOrUpdate(id, item, (key, x) => { x.Data.AddRange(item.Data); return x; });
 
                             var url = c?.SelectSingleNode("icon")?.Attributes?.GetNamedItem("src")?.Value;
                             if (url != null)
@@ -59,7 +59,7 @@ namespace IPTVRelay.Library
                         }
                     })).ToArray());
 
-                return bag.ToList();
+                return bag.Values.ToList();
             }
 
 

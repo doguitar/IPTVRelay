@@ -1,27 +1,33 @@
+using Hangfire;
+using Hangfire.Storage.SQLite;
 using IPTVRelay.Blazor.Client.Pages;
 using IPTVRelay.Blazor.Components;
 using IPTVRelay.Database;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 
 namespace IPTVRelay.Blazor
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
+
             var configBuilder = new ConfigurationBuilder();
             configBuilder.AddEnvironmentVariables("IPTV_");
-
+            var config = (IConfiguration)configBuilder.Build();
+            var dataDirectory = new DirectoryInfo(config.GetValue<string>("DATA_FOLDER"));
+            if (!dataDirectory.Exists) dataDirectory.Create();
 
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
             builder.Services
-                .AddDbContext<IPTVRelayContext>(options => options.UseSqlite(new SqliteConnectionStringBuilder { DataSource = "IPTVRelay.db" }.ToString()))
-                .AddSingleton((IConfiguration)configBuilder.Build())
+                .AddHangfire(c => c.UseSQLiteStorage(Path.Combine(dataDirectory.FullName, "scheduler.db")))
+                .AddDbContext<IPTVRelayContext>(options => options.UseSqlite(new SqliteConnectionStringBuilder { DataSource = Path.Combine(dataDirectory.FullName, "IPTVRelay.db") }.ToString()))
+                .AddSingleton(config)
                 .AddBlazorBootstrap()
                 .AddRazorComponents()
                 .AddInteractiveServerComponents()
@@ -46,25 +52,31 @@ namespace IPTVRelay.Blazor
             app.UseStaticFiles();
             app.UseAntiforgery();
 
+            app.UseHangfireServer();
+
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
-            DirectoryInfo dataDirectory = null;
             using (var scope = app.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<IPTVRelayContext>();
                 db.Database.Migrate();
-
-                var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-                dataDirectory = new DirectoryInfo(config.GetValue<string>("DATA_FOLDER"));
 
                 if (int.TryParse(config.GetValue<string>("PORT"), out var port))
                 {
                     app.Urls.Clear();
                     app.Urls.Add($"http://*:{port}");
                 }
+
+                var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+                recurringJobManager.AddOrUpdate<Utility.Jobs.UpdateJob>(
+                    "UPDATE",
+                    (j) => j.Update(),
+                    Cron.Daily(DateTime.Now.Hour, DateTime.Now.Minute));
+
+
 
             }
 

@@ -61,7 +61,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        guides = await DB.XMLTV.Include(g=>g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).ToListAsync();
+        guides = await DB.XMLTV.Include(g => g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).ToListAsync();
     }
 
     protected async Task Add()
@@ -109,16 +109,17 @@ else
     public async void Added(Tuple<string, XMLTV> data)
     {
         await modal.HideAsync();
+        var guide = await DB.XMLTV.Include(g => g.Items).FirstOrDefaultAsync(g => g.Id == data.Item2.Id) ?? new XMLTV { }; ;
+        guide.Uri = data.Item2.Uri;
+        guide.Name = data.Item2.Name;
         if (data.Item1 != null)
         {
             var items = await Library.XMLTVParser.Parse(data.Item1);
             try
             {
-                var guide = await DB.XMLTV.Include(g => g.Items).FirstOrDefaultAsync(g => g.Id == data.Item2.Id) ?? new XMLTV { Items = items };
-                guide.Name = data.Item2.Name;
                 if (data.Item2.Id > 0)
                 {
-                    var dict = items.ToDictionary(i => i.ChannelId, i => i);
+                    var dict = items.GroupBy(i => i.ChannelId, i => i).ToDictionary(g => g.Key, g => g.First());
                     for (var i = 0; i < guide.Items.Count; i++)
                     {
                         if (!dict.ContainsKey(guide.Items[i].ChannelId))
@@ -128,7 +129,8 @@ else
                             i--;
                         }
                     }
-                    dict = guide.Items.ToDictionary(i => i.ChannelId, i => i);
+
+                    dict = guide.Items.GroupBy(i => i.ChannelId, i => i).ToDictionary(g => g.Key, g => g.First());
                     for (var i = 0; i < items.Count; i++)
                     {
                         if (!dict.ContainsKey(items[i].ChannelId))
@@ -143,9 +145,9 @@ else
                 }
                 else
                 {
+                    guide.Items = items;
                     await DB.AddAsync(guide);
                 }
-                await DB.SaveChangesAsync();
 
                 var file = Utility.XMLTV.GetFileInfo(Config, guide);
                 File.WriteAllText(file.FullName, data.Item1);
@@ -157,5 +159,6 @@ else
 
             }
         }
+        await DB.SaveChangesAsync();
     }
 }

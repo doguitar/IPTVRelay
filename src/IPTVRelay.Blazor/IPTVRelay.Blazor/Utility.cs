@@ -1,8 +1,11 @@
 ﻿using IPTVRelay.Blazor.Components.Pages;
+using IPTVRelay.Database;
 using IPTVRelay.Database.Models;
 using IPTVRelay.Library;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Xml;
@@ -36,30 +39,36 @@ namespace IPTVRelay.Blazor
             {
                 var file = GetFileInfo(config, playlist);
                 if (!file.Exists) { refresh = true; }
+
                 if (refresh)
                 {
                     playlist.Items = await M3UParser.Parse(new Uri(playlist.Uri));
-                    WriteToDisk(config, playlist);
                 }
                 else
                 {
                     playlist.Items = await M3UParser.Parse(new Uri($"file:\\{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
                 }
+
                 if (applyFilters && playlist.Filters.Count > 0)
                 {
                     playlist.Items = await ApplyFiltersAsync(playlist);
                 }
+                await WriteToDisk(config, playlist);
+
+                playlist.Count = playlist.Items.Count;
 
                 return playlist;
             }
-            public static FileInfo WriteToDisk(IConfiguration config, Database.Models.M3U playlist)
+            public static async Task<FileInfo> WriteToDisk(IConfiguration config, Database.Models.M3U playlist)
             {
                 var file = GetFileInfo(config, playlist);
-                WriteToDisk(file, playlist);
+                await WriteToDisk(file, playlist);
                 return file;
             }
-            public static FileInfo WriteToDisk(FileInfo file, Database.Models.M3U playlist)
+            public static async Task<FileInfo> WriteToDisk(FileInfo file, Database.Models.M3U playlist)
             {
+                var content = await M3UParser.Create(playlist.Items);
+                await File.WriteAllTextAsync(file.FullName, content.ToString());
                 return file;
             }
             public static async Task<List<M3UItem>> ApplyFiltersAsync(Database.Models.M3U playlist)
@@ -74,17 +83,13 @@ namespace IPTVRelay.Blazor
                         await Task.WhenAll(chunk.Select(p => Task.Run(() =>
                         {
                             var filtered = FilterHelper.DoFilter(p.Item, p.Index, items.Count, f);
-                            if (filtered) bag.Add(p.Item);
+                            if (!filtered) bag.Add(p.Item);
                         })));
                     }
-                    foreach (var item in bag)
-                    {
-                        items.Remove(item);
-                    }
+                    items = bag.ToList();
                 }
                 return items;
             }
-
             public static async Task<FileInfo> Generate(IConfiguration config, List<Database.Models.Mapping> mappings)
             {
                 var dataFolder = config.GetValue<string>("DATA_FOLDER");
@@ -232,9 +237,10 @@ namespace IPTVRelay.Blazor
                     return await XMLTVParser.Parse(new Uri($"file:\\{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
                 }
             }
-            public static FileInfo WriteToDisk(IConfiguration config, Database.Models.XMLTV guide)
+            public static async Task<FileInfo> WriteToDisk(IConfiguration config, Database.Models.XMLTV guide, string content)
             {
                 var file = GetFileInfo(config, guide);
+                await File.WriteAllTextAsync(file.FullName, content);
                 return file;
             }
             public static async Task<List<XMLTVItem>> ApplyFiltersAsync(Database.Models.XMLTV guide)
@@ -335,6 +341,76 @@ namespace IPTVRelay.Blazor
                 await File.WriteAllTextAsync(fileInfo.FullName, content.ToString());
 
                 return fileInfo;
+            }
+        }
+
+        public static class Jobs
+        {
+            public class UpdateJob
+            {
+                IConfiguration Config;
+                IPTVRelayContext DB;
+
+                public UpdateJob(IConfiguration config, IPTVRelayContext db)
+                {
+                    Config = config;
+                    DB = db;
+                }
+
+                private async Task CreateOutput()
+                {
+                    var mappings = await DB.Mapping
+                        .Include(m => m.XMLTVItem)
+                        .Include(m => m.M3U)
+                        .Include(m => m.Filters)
+                        .OrderBy(m => m.Channel).ThenBy(m => m.Name)
+                        .AsNoTracking().ToListAsync();
+
+                    await M3U.Generate(Config, mappings);
+                    await XMLTV.Generate(Config, mappings);
+                }
+                public async Task Update()
+                {
+                    {
+                        var playlists = await DB.M3U.Include(p => p.Filters).ToListAsync();
+
+                        await Task.WhenAll(playlists.Where(p => p.ParentId.GetValueOrDefault() == 0).Select(p => PopulateM3URecursive(p, playlists)));
+
+                        await DB.SaveChangesAsync();
+                    }
+                    {
+                        var guides = await DB.XMLTV.Include(g => g.Items).ToListAsync();
+                        foreach (var guide in guides)
+                        {
+                            Database.Models.XMLTV newGuide = new();
+                            string content = string.Empty;
+                            try
+                            {
+                                content = await XMLTV.Populate(Config, guide, refresh: true, applyFilters: true);
+                                newGuide.Items = await XMLTVParser.Parse(content);
+                            }
+                            catch { continue; }
+                            var removed = guide.Items.Except(newGuide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
+                            var added = newGuide.Items.Except(guide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
+
+                            if (removed.Any() || added.Any())
+                            {
+                                DB.XMLTVItem.RemoveRange(removed);
+                                DB.XMLTVItem.AddRange(added);
+                                await DB.SaveChangesAsync();
+                            }
+
+                            await XMLTV.WriteToDisk(Config, guide, content);
+                        }
+                    }
+                }
+                private async Task PopulateM3URecursive(Database.Models.M3U playlist, List<Database.Models.M3U> playlists)
+                {
+                    await M3U.Populate(Config, playlist, refresh: true, applyFilters: true);
+
+                    await Task.WhenAll(playlists.Where(p => p.ParentId == playlist.Id).Select(p => PopulateM3URecursive(p, playlists)));
+                }
+
             }
         }
     }

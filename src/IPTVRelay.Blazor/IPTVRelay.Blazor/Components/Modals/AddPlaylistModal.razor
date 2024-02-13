@@ -154,8 +154,9 @@
         var uri = new Uri(Playlist.Uri);
         if ((uri.IsFile && Playlist.ParentId > 0) || Uri.IsWellFormedUriString(Playlist.Uri, UriKind.Absolute))
         {
-            await Utility.M3U.Populate(Config, Playlist, applyFilters: true);
+            await Utility.M3U.Populate(Config, Playlist, refresh: true, applyFilters: true);
             FilteredItems = Playlist.Items.Select(i => new FilteredItem { Filtered = false, Item = i }).ToList();
+            Playlist.Count = Playlist.Items.LongCount();
         }
     }
 }
