@@ -234,7 +234,7 @@ namespace IPTVRelay.Blazor
                 }
                 else
                 {
-                    return await XMLTVParser.Parse(new Uri($"file:\\{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
+                    return await XMLTVParser.Parse(new Uri($"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
                 }
             }
             public static async Task<FileInfo> WriteToDisk(IConfiguration config, Database.Models.XMLTV guide, string content)
