@@ -1,9 +1,12 @@
 ﻿@typeparam TFilter where TFilter : Filter, new()
+@typeparam TItem
 
 @code {
 
     private TFilter Current = new();
 
+    [Parameter] public List<TItem> Items { get; set; } = [];
+    [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
     [Parameter] public List<TFilter> Filters { get; set; } = [];
     [Parameter] public EventCallback<TFilter> OnTest { get; set; }
     [Parameter] public EventCallback<TFilter> OnApply { get; set; }
@@ -24,7 +27,7 @@
                 <DropdownActionButton Style="width: 5em;" Color="ButtonColor.Secondary">@(Current.FilterType.AsString(EnumFormat.Description))</DropdownActionButton>
                 <DropdownToggleButton Color="ButtonColor.Secondary" />
                 <DropdownMenu>
-                    @foreach (var t in Enum.GetValues<Database.Enums.FilterType>())
+                    @foreach (var t in Enum.GetValues<Database.Enums.FilterType>().Skip(1))
                     {
                         <DropdownItem Type="ButtonType.Link" @onclick=@((a)=>FilterTypeChanged(t))>@(t.AsString(EnumFormat.Description))</DropdownItem>
                     }
@@ -47,6 +50,14 @@
         </tr>
     }
 </table>
+
+@if (ChildContent != null && Items != null && Items.Count > 0)
+{
+    foreach (var item in Items)
+    {
+        @ChildContent(item)
+    }
+}
 
 
 @code {

@@ -25,7 +25,7 @@
             <tr>
                 <th>Type</th>
                 <th>Value</th>
-                <th><Button Color="ButtonColor.Primary" @onclick=@(()=>Save())>Save</Button></th>
+                <th><SaveButton OnClick=@(()=>Save())></SaveButton></th>
             </tr>
         </thead>
         <tbody>
@@ -35,7 +35,7 @@
                     <InputText class="form-control" @bind-Value=ApiKey />
                 </td>
                 <td>
-                    <Button class="btn btn-primary" @onclick=@(()=> ApiKey = Guid.NewGuid().ToString().Replace("-", string.Empty))>Generate</Button>
+                    <RefreshButton OnClick=@(()=> ApiKey = Guid.NewGuid().ToString().Replace("-", string.Empty))></RefreshButton>
                 </td>
             </tr>
             <tr>

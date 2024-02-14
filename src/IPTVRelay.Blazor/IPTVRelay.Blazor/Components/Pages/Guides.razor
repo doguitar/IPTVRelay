@@ -25,7 +25,7 @@
 <Loader IsLoading=@(IsLoading || guides == null)>
     @if (guides != null)
     {
-        <Button @onclick=Add>Add</Button>
+        <AddButton OnClick=Add></AddButton>
         <table class="table table-dark">
             <thead>
                 <tr>
@@ -43,8 +43,8 @@
                         <td style="white-space:nowrap">@g.Name</td>
                         <td style="width:100%">@g.Uri</td>
                         <td style="white-space:nowrap">@g.Count</td>
-                        <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(g.Id))>Edit</Button></td>
-                        <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(g.Id))>Delete</Button></td>
+                        <td style="white-space:nowrap"><EditButton OnClick=@(()=>Edit(g.Id))></EditButton></td>
+                        <td style="white-space:nowrap"><DeleteButton OnClick=@(()=>Delete(g.Id))></DeleteButton></td>
                     </tr>
                 }
             </tbody>

@@ -33,10 +33,14 @@
 <PageTitle>Channels</PageTitle>
 
 <h1>Channels</h1>
+
+
+
 <Loader IsLoading=@IsLoading>
     <div class="row">
         <div class="col-md-12">
-            <Button Color="ButtonColor.Primary" @onclick=@(Generate)>Save and Generate</Button>
+            <SaveButton OnClick="()=>Save()"></SaveButton>
+            <PlayButton OnClick="Generate"></PlayButton>
         </div>
     </div>
     <div class="row">
@@ -121,10 +125,16 @@
         }
     }
 
-    protected async Task Generate()
+    protected async Task Save(bool load = true)
     {
         await SetLoading();
         await DB.SaveChangesAsync();
+        if (load) await Load();
+    }
+    protected async Task Generate()
+    {
+        await Save(false);
+        await SetLoading();
         await Utility.M3U.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
         await Utility.XMLTV.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
         await Load();

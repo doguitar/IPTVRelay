@@ -19,7 +19,7 @@
             <div class="input-group mb-3">
                 <InputText class="form-control" placeholder="XMLTV Location" aria-label="XMLTV Location" aria-describedby="basic-addon2" @bind-Value=Model!.Uri></InputText>
                 <div class="input-group-append">
-                    <Button Color="ButtonColor.Primary" @onclick=GetUri>Load</Button>
+                    <DownloadButton OnClick="GetUri"></DownloadButton>
                 </div><div class="input-group-append">
                     <span class="input-group-text" id="basic-addon2">@Model?.Items.Count</span>
                 </div>
@@ -30,6 +30,7 @@
     <div class="row">
         <div class="col-md-12">
             <div class="float-end">
+                <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
                 <Button Color="ButtonColor.Primary" @onclick=@Save Disabled="!CanSave">Save</Button>
                 <Button Color="ButtonColor.Danger" @onclick=@Cancel >Cancel</Button>
             </div>

@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Blazor", "IPTVRel
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Blazor.Client", "IPTVRelay.Blazor\IPTVRelay.Blazor.Client\IPTVRelay.Blazor.Client.csproj", "{095D2B65-67DE-41BD-B597-EAD5129FA2ED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IPTVRelay.Library.Components", "IPTVRelay.Library.Components\IPTVRelay.Library.Components.csproj", "{605349ED-4B09-40B7-A529-83887E555F9E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Library.Components", "IPTVRelay.Library.Components\IPTVRelay.Library.Components.csproj", "{605349ED-4B09-40B7-A529-83887E555F9E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

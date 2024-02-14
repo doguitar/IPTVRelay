@@ -19,7 +19,7 @@
 
     private Dropdown ddlPlaylists = default!;
     private Dropdown ddlGuides = default!;
-    private Filter<MappingFilter> filter = default!;
+    private Filter<MappingFilter, FilteredItem> filter = default!;
 
     [Parameter] public long MappingId { get; set; }
 
@@ -84,25 +84,21 @@
                     else
                     {
                         var i = 0;
-                        <Filter @ref="filter" TFilter="MappingFilter" Filters="Filters" OnApply="@((f)=>ApplyFilter(f))" OnTest="@((f)=>TestFilter(f))" OnDelete="((f)=>DeleteFilter(f))" />
-
-                        <div>
-
-                            @foreach (var fi in FilteredItems)
-                            {
+                        <Filter @ref="filter" TFilter="MappingFilter" TItem="FilteredItem" Filters="Filters" Items=FilteredItems OnApply="@((f)=>ApplyFilter(f))" OnTest="@((f)=>TestFilter(f))" OnDelete="((f)=>DeleteFilter(f))">
+                            @{
+                                var fi = context;
                                 i++;
-                                <div class="@(string.Join(" ", new [] {fi.Filtered? "filtered" : string.Empty}))">
-                                    @(fi?.Item?.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? fi?.Item?.Url ?? string.Empty)
-                                    @foreach (var data in fi?.Item?.Data?.Select(d => $"{d.Key} : {d.Value}") ?? [])
-                                    {
-                                        <div class="tabbed subtext">
-                                            <Button @onclick="@((e)=>TestFilter(data, FilterType.Contains, true))" Color="ButtonColor.Primary" Size="Size.Small" Outline="true">@data</Button>
-                                        </div>
-                                    }
-                                </div>
                             }
-                        </div>
-
+                            <div class="@(string.Join(" ", new [] {fi.Filtered? "filtered" : string.Empty}))">
+                                @(fi?.Item?.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? fi?.Item?.Url ?? string.Empty)
+                                @foreach (var data in fi?.Item?.Data?.Select(d => $"{d.Key} : {d.Value}") ?? [])
+                                {
+                                    <div class="tabbed subtext">
+                                        <Button @onclick="@((e)=>TestFilter(data, FilterType.Contains, true))" Color="ButtonColor.Primary" Size="Size.Small" Outline="true">@data</Button>
+                                    </div>
+                                }
+                            </div>
+                        </Filter>
                     }
                 }
             }
