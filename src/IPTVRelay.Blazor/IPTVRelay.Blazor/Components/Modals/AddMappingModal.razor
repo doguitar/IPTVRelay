@@ -122,6 +122,7 @@
     protected async Task GuideSelected(XMLTV guide)
     {
         IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         if (!ParsedGuides.TryGetValue(guide.Id, out var items))
         {
             items = (await XMLTVParser.Parse(await Utility.XMLTV.Populate(Config, guide))).OrderBy(c => c.ChannelId).ToList();
@@ -134,13 +135,14 @@
     protected async Task ChannelSelected(XMLTVItem channel)
     {
         IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         SelectedChannel = channel;
-
         IsLoading = false;
     }
     protected async Task PlaylistSelected(M3U playlist)
     {
         IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         SelectedPlaylist = playlist;
         SelectedItems = (await Utility.M3U.Populate(Config, playlist)).Items.OrderBy(i => i.Url).ToList();
 
@@ -169,7 +171,6 @@
                 }
             }
         }
-
         FilteredItems = items.Select(c => new FilteredItem { Filtered = false, Item = c }).ToList();
 
         IsLoading = false;
@@ -177,6 +178,7 @@
     protected async Task TestFilter(MappingFilter filter)
     {
         IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         var filtered = await Library.FilterHelper.DoFilter(FilteredItems, filter);
         await FilteredItems.Except(filtered).ParallelForEachAsync(i => i.Filtered = true);
         await filtered.ParallelForEachAsync(i => i.Filtered = false);
@@ -186,6 +188,7 @@
     protected async Task ApplyFilter(MappingFilter filter)
     {
         IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         Filters.Add(filter);
         FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
         IsLoading = false;
@@ -193,6 +196,7 @@
     protected async Task DeleteFilter(MappingFilter filter)
     {
         IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         Filters.Remove(filter);
         FilteredItems = (await Library.FilterHelper.DoFilter(SelectedItems, Filters)).Select(m => new FilteredItem { Filtered = false, Item = m }).ToList();
         IsLoading = false;
@@ -200,6 +204,8 @@
 
     public override async Task Load()
     {
+        IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         if (MappingId > 0)
         {
             var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
@@ -220,9 +226,11 @@
         }
         Guides = await DB.XMLTV.OrderBy(g => g.Created).AsNoTracking().ToListAsync();
         Playlists = await DB.M3U.OrderBy(p => p.Created).AsNoTracking().ToListAsync();
+        IsLoading = false;
     }
     public override async Task Save()
     {
+        IsLoading = true;
         var mapping = await DB.Mapping.FirstOrDefaultAsync(m => m.Id == MappingId) ?? new();
         var channel = await DB.XMLTVItem.FirstOrDefaultAsync(c => c.ChannelId == SelectedChannel.ChannelId);
         if (channel != null)
@@ -238,12 +246,13 @@
             }
             await DB.SaveChangesAsync();
         }
-        //SelectedPlaylist = null;
-        FilteredItems = SelectedItems.Select(i => new FilteredItem { Item = i }).ToList();
+
         SelectedChannel = null;
         Filters = [];
+        await PlaylistSelected(SelectedPlaylist);
 
         await OnSave.InvokeAsync(new ModalEventArgs<Mapping>(mapping));
+        IsLoading = false;
     }
     public override async Task Cancel()
     {

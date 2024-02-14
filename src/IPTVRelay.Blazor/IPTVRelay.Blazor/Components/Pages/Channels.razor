@@ -115,6 +115,8 @@
 
     protected async Task Generate()
     {
+        IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         await DB.SaveChangesAsync();
         await Utility.M3U.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
         await Utility.XMLTV.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
