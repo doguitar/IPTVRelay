@@ -50,8 +50,8 @@
         <div class="col-md-12">
             <div class="float-end">
                 <Button Color="ButtonColor.Info" @onclick=@((a) => {preview = !preview;})>Preview</Button>
-                <Button Color="ButtonColor.Primary" @onclick=@Save @Disabled="@CanSave">Save</Button>
-                <Button Color="ButtonColor.Danger" @onclick=@Cancel @Disabled="@CanSave">Cancel</Button>
+                <Button Color="ButtonColor.Primary" @onclick=@Save Disabled="@CanSave">Save</Button>
+                <Button Color="ButtonColor.Danger" @onclick=@Cancel Disabled="@CanSave">Cancel</Button>
             </div>
         </div>
     </div>
