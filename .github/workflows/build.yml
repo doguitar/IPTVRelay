@@ -1,0 +1,36 @@
+name: Build
+
+on:
+    push:
+        branches:
+        - master
+        - feature/*
+    pull_request:
+        branches:
+        - master
+
+env:
+    VERSION: 0.1.0
+    IPTVRELAY_MAJOR_VERSION: 0
+    BUILD_CONFIGURATION: Release
+    BRANCH: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+    app:
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.variables.outputs.version }}
+            major_version: ${{ steps.variables.outputs.major_version }}
+        steps:
+        -   name: Setup Environment Variables
+            id: variables
+            shell: bash
+            run: 
+                # Add 100 to the build number because GitHub won't let us pick an arbitrary starting point
+                IPTVRELAY_VERSION="${{ env.VERSION }}.$((${{ github.run_number }}+100))"
+                DOTNET_VERSION=$(jq -r '.sdk.version' global.json)
+        
+                echo "SDK_PATH=${{ env.DOTNET_ROOT }}/sdk/${DOTNET_VERSION}" >> "$GITHUB_ENV"
+                echo "IPTVRELAY_VERSION=$IPTVRELAY_VERSION" >> "$GITHUB_ENV"
+                echo "major_version=${{ env.IPTVRELATE_MAJOR_VERSION }}" >> "$GITHUB_OUTPUT"
+                echo "version=$IPTVRELAY_VERSION" >> "$GITHUB_OUTPUT"

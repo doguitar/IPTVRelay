@@ -402,3 +402,6 @@ FodyWeavers.xsd
 /src/IPTVRelay.Blazor/IPTVRelay.Blazor/IPTVRelay.db-shm
 /src/IPTVRelay.Blazor/IPTVRelay.Blazor/IPTVRelay.db-wal
 /data
+
+# ignore yml files that start with a . in all folders
+**/.*.yml
