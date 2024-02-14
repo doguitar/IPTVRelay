@@ -30,13 +30,13 @@
                         <Button Color="ButtonColor.Primary" @onclick=GetUri>Load</Button>
                     </div>
                     <div class="input-group-append">
-                        <span class="input-group-text" id="basic-addon2">@(FilteredItems?.Count.ToString() ?? string.Empty)</span>
+                        <span class="input-group-text" id="basic-addon2">@(FilteredItems?.LongCount().ToString() ?? string.Empty)</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        @if (FilteredItems?.Count > 0)
+        @if (FilteredItems?.Count > 0 || Filters.Count > 0)
         {
             <div class="row">
                 <div class="col-md-12">
@@ -50,8 +50,8 @@
         <div class="col-md-12">
             <div class="float-end">
                 <Button Color="ButtonColor.Info" @onclick=@((a) => {preview = !preview;})>Preview</Button>
-                <Button Color="ButtonColor.Primary" @onclick=@Save Disabled="@CanSave">Save</Button>
-                <Button Color="ButtonColor.Danger" @onclick=@Cancel Disabled="@CanSave">Cancel</Button>
+                <Button Color="ButtonColor.Primary" @onclick=@Save Disabled="!CanSave">Save</Button>
+                <Button Color="ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
             </div>
         </div>
     </div>
@@ -83,7 +83,10 @@
     }
     protected async Task OnNewFilterApply(M3UFilter filter)
     {
+        await SetLoading();
+        Filters.Add(filter);
         FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
+        await SetLoaded();
     }
 
     public override async Task Save()
@@ -106,7 +109,7 @@
     }
     public async Task GetUri()
     {
-        IsLoading = true;
+        await SetLoading();
         var canSave = false;
         await InvokeAsync(StateHasChanged);
         if (Uri.TryCreate(Model?.Uri, UriKind.Absolute, out var uri))
@@ -117,10 +120,9 @@
                 FilteredItems = Model.Items.Select(i => new FilteredItem { Filtered = false, Item = i }).ToList();
                 Model.Count = Model.Items.LongCount();
                 canSave = true;
-                IsLoading = false;
             }
         }
         CanSave = canSave;
-        await InvokeAsync(StateHasChanged);
+        await SetLoaded();
     }
 }

@@ -30,8 +30,8 @@
     <div class="row">
         <div class="col-md-12">
             <div class="float-end">
-                <Button Color="ButtonColor.Primary" @onclick=@Save Disabled="@CanSave">Save</Button>
-                <Button Color="ButtonColor.Danger" @onclick=@Cancel Disabled="@CanSave">Cancel</Button>
+                <Button Color="ButtonColor.Primary" @onclick=@Save Disabled="!CanSave">Save</Button>
+                <Button Color="ButtonColor.Danger" @onclick=@Cancel >Cancel</Button>
             </div>
         </div>
     </div>
@@ -41,8 +41,8 @@
     {
         if (Uri.TryCreate(Model?.Uri, UriKind.Absolute, out var uri))
         {
-            IsLoading = true;
-            await InvokeAsync(StateHasChanged);
+            var canSave = false;
+            await SetLoading();
             Content = await Utility.XMLTV.Populate(Config, Model);
             if (Content != null)
             {
@@ -50,10 +50,11 @@
                 if (items != null)
                 {
                     Model.Items = items;
+                    canSave = true;
                 }
             }
-            IsLoading = false;
-            await InvokeAsync(StateHasChanged);
+            CanSave = canSave;
+            await SetLoaded();
         }
     }
 
@@ -67,19 +68,20 @@
     }
     public override async Task Load()
     {
+        await SetLoading();
         Model = await DB.XMLTV.FirstOrDefaultAsync(m => m.Id == ModelId) ?? new XMLTV();
-
         if (Model.Id > 0)
         {
             Content = await Utility.XMLTV.Populate(Config, Model);
             if (Content != null)
             {
-               var items = await XMLTVParser.Parse(Content);
-               if(items != null)
-               {
-                   Model.Items = items;
-               }
+                var items = await XMLTVParser.Parse(Content);
+                if(items != null)
+                {
+                    Model.Items = items;
+                }
             }
         }
+        await SetLoaded();
     }
 }

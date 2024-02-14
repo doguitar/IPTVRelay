@@ -138,7 +138,7 @@ button.btn {
     align-items: center;
     background-color: rgba(0, 0, 0, 0.3);
     color: white;
-    z-index: 1;
+    z-index: 999;
 }
 
     .loading-spinner::before {
