@@ -118,7 +118,8 @@ namespace IPTVRelay.Blazor
                                 playlists[m.M3UId.Value] = (await Populate(config, new Database.Models.M3U { Id = m.M3UId.Value })).Items;
                             }
                             var playlistItems = playlists[m.M3UId.Value].ToList();
-                            if (playlistItems.Count > 0)
+                            var playlistItem = (await FilterHelper.DoFilter(playlistItems, m.Filters))?.FirstOrDefault();
+                            if (playlistItem != null)
                             {
                                 playlist.Items.Add(new M3UItem
                                 {
