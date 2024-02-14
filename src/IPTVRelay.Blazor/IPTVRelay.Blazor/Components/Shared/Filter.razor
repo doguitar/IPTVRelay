@@ -31,7 +31,7 @@
                 </DropdownMenu>
             </Dropdown>
         </td>
-        <td><InputText @bind-Value=Current.FilterContent></InputText></td>
+        <td><InputText class="form-control" @bind-Value=Current.FilterContent></InputText></td>
         <td><Switch @bind-Value="Current.Invert" /></td>
         <td><Button Color="ButtonColor.Primary" Disabled=@(Current.FilterType == Database.Enums.FilterType.None) @onclick=@((a)=>Test())>Test</Button></td>
         <td><Button Color="ButtonColor.Success" Disabled=@(Current.FilterType == Database.Enums.FilterType.None) @onclick=@((a)=>Apply())>Apply</Button></td>

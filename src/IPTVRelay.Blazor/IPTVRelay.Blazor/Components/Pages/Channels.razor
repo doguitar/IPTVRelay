@@ -41,25 +41,31 @@
     </div>
     <div class="row">
         <div class="col-md-12">
-            <table class="channels">
-                @if(Mappings != null)
-                {
-                    foreach (var m in Mappings)
+            <table class="channels table table-dark">
+                <thead><tr><th>Target Channel</th><th>Channel Id</th><th>Channel Name</th></tr></thead>
+                <tbody>
+                    @if (Mappings != null)
                     {
-                        <tr>
-                            <td class="targetChannel">
-                                <NumberInput tabindex="@m.ActualChannel" TValue="long" EnableMinMax=true Min="1" Max="99999" @bind-Value=@m.Mapping.Channel @onblur="((a) => Recalculate())"></NumberInput>
-                            </td>
-                            <td class="actualChannel">
-                                @(m.ActualChannel)
-                            </td>
-                            <td class="name">
-                                <InputText tabindex="@(m.ActualChannel+10000)" @bind-Value=@m.Mapping.Name></InputText>
-                            </td>
-                        </tr>
+                        foreach (var m in Mappings)
+                        {
+                            <tr>
+                                <td class="targetChannel align-middle">
+                                    <NumberInput tabindex="@m.ActualChannel" TValue="long" EnableMinMax=true Min="1" Max="99999" @bind-Value=@m.Mapping.Channel @onblur="((a) => Recalculate())"></NumberInput>
+                                </td>
+                                <td class="actualChannel align-middle">
+                                    <div>
+                                        @(m.ActualChannel)
+                                    </div>
+                                </td>
+                                <td class="name">
 
+                                    <InputText class="form-control" tabindex="@(m.ActualChannel+10000)" @bind-Value=@m.Mapping.Name></InputText>
+                                </td>
+                            </tr>
+
+                        }
                     }
-                }
+                </tbody>
             </table>
         </div>
     </div>
