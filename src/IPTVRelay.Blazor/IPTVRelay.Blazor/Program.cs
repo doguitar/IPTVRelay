@@ -3,6 +3,7 @@ using Hangfire.Storage.SQLite;
 using IPTVRelay.Blazor.Client.Pages;
 using IPTVRelay.Blazor.Components;
 using IPTVRelay.Database;
+using IPTVRelay.Database.Enums;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +16,6 @@ namespace IPTVRelay.Blazor
     {
         public static async Task Main(string[] args)
         {
-
             var configBuilder = new ConfigurationBuilder();
             configBuilder.AddEnvironmentVariables("IPTV_");
             var config = (IConfiguration)configBuilder.Build();
@@ -70,34 +70,55 @@ namespace IPTVRelay.Blazor
                     app.Urls.Add($"http://*:{port}");
                 }
 
+                var settings = await db.Setting.ToDictionaryAsync(s => s.Name, s => s.Value);
+                settings.TryGetValue(SettingType.UPDATE_CRON.ToString(), out var updateCron);
 
                 var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
                 recurringJobManager.AddOrUpdate<Utility.Jobs.UpdateJob>(
                     "UPDATE",
                     (j) => j.Update(),
-                    Cron.Daily(DateTime.Now.Hour, DateTime.Now.Minute));
+                    !string.IsNullOrWhiteSpace(updateCron) ? updateCron : Cron.Daily(DateTime.Now.Hour, DateTime.Now.Minute));
             }
 
             if (dataDirectory != null)
             {
-                if (!dataDirectory.Exists) dataDirectory.Create();
-                var imageDirectory = new DirectoryInfo(Path.Combine(dataDirectory.FullName, "images"));
-                if (!imageDirectory.Exists) imageDirectory.Create();
-                var outputDirectory = new DirectoryInfo(Path.Combine(dataDirectory.FullName, "output"));
-                if (!outputDirectory.Exists) outputDirectory.Create();
 
-                app.UseStaticFiles(new StaticFileOptions
+                if (!dataDirectory.Exists) dataDirectory.Create();
+
+                var staticFileDirectories = new[] { "images", "output", "m3u", "xmltv" };
+
+                foreach (var directory in staticFileDirectories)
                 {
-                    FileProvider = new PhysicalFileProvider(Path.Combine(dataDirectory.FullName, "images")),
-                    RequestPath = "/images"
-                });
-                app.UseStaticFiles(new StaticFileOptions
-                {
-                    FileProvider = new PhysicalFileProvider(Path.Combine(dataDirectory.FullName, "output")),
-                    RequestPath = "/output"
-                });
+                    var staticDirectory = new DirectoryInfo(Path.Combine(dataDirectory.FullName, directory));
+                    if (!staticDirectory.Exists) staticDirectory.Create();
+
+                    app.UseStaticFiles(new StaticFileOptions
+                    {
+                        FileProvider = new PhysicalFileProvider(Path.Combine(dataDirectory.FullName, directory)),
+                        RequestPath = $"/{directory}",
+                        OnPrepareResponseAsync = async ctx =>
+                        {
+                            using var scope = app.Services.CreateScope();
+
+                            var db = scope.ServiceProvider.GetRequiredService<IPTVRelayContext>();
+                            var settings = await db.Setting.ToDictionaryAsync(s => s.Name, s => s.Value);
+
+                            settings.TryGetValue(SettingType.API_KEY.ToString(), out var apiKey);
+                            if (string.IsNullOrWhiteSpace(apiKey) ||
+                                !(ctx.Context.Request.Query.TryGetValue("apikey", out var requestKey) || ctx.Context.Request.Headers.TryGetValue("API-Key", out requestKey)) ||
+                                !apiKey.Equals(requestKey))
+                            {
+                                ctx.Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                                await ctx.Context.Response.WriteAsync("Unauthorized");
+                            }
+
+                        }
+                    });
+                }
             }
             app.Run();
+
         }
     }
 }
+

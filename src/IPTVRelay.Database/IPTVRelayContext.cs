@@ -60,7 +60,6 @@ namespace IPTVRelay.Database
         public DbSet<Models.XMLTVItem> XMLTVItem { get; set; }
         public DbSet<Models.Mapping> Mapping { get; set; }
         public DbSet<Models.MappingFilter> MappingFilter { get; set; }
-        public DbSet<Models.Settings> Settings { get; set; }
         public DbSet<Models.Setting> Setting { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -96,19 +95,9 @@ namespace IPTVRelay.Database
                 e.HasIndex(m => m.MappingId);
             });
 
-            modelBuilder.Entity<Models.Settings>(e =>
-            {
-                e.HasIndex(m => m.Id).IsUnique();
-            });
-
             modelBuilder.Entity<Models.Setting>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
-            });
-            modelBuilder.Entity<Models.Setting>(e =>
-            {
-                e.HasIndex(m => m.Id).IsUnique();
-                e.HasIndex(m => m.SettingsId);
             });
 
 

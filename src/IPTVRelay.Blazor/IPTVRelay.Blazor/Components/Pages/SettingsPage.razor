@@ -1,0 +1,82 @@
+﻿@inherits BaseComponent
+@page "/settings"
+@using IPTVRelay.Database.Enums
+@attribute [StreamRendering]
+
+@rendermode InteractiveServer
+
+@code {
+    Dictionary<SettingType, Setting?> Settings { get; } = new()
+    {
+        { SettingType.API_KEY, null },
+        { SettingType.UPDATE_CRON, null }
+    };
+
+    private string ApiKey { get { Settings.TryGetValue(SettingType.API_KEY, out var value); return value?.Value ?? string.Empty; } set { Settings[SettingType.API_KEY].Value = value; } }
+    private string CronExpression { get { Settings.TryGetValue(SettingType.UPDATE_CRON, out var value); return value?.Value ?? string.Empty; } set { Settings[SettingType.UPDATE_CRON].Value = value; } }
+}
+
+<PageTitle>Settings</PageTitle>
+<h1>Settings</h1>
+
+<Loader IsLoading=@IsLoading>
+    <table class="table table-dark">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Value</th>
+                <th><Button Color="ButtonColor.Primary" @onclick=@(()=>Save())>Save</Button></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Api Key</td>
+                <td>
+                    <InputText class="form-control" @bind-Value=ApiKey />
+                </td>
+                <td>
+                    <Button class="btn btn-primary" @onclick=@(()=> ApiKey = Guid.NewGuid().ToString().Replace("-", string.Empty))>Generate</Button>
+                </td>
+            </tr>
+            <tr>
+                <td>Update Cron</td>
+                <td>
+                    <InputText class="form-control" @bind-Value=CronExpression />
+                </td>
+                <td>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</Loader>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await SetLoading();
+        await base.OnInitializedAsync();
+        var settings = await DB.Setting.ToDictionaryAsync(s => s.Name);
+        foreach (var t in Settings.Keys)
+        {
+            Settings[t] = settings.TryGetValue(t.ToString(), out var value) ? value : new Setting { Name = t.ToString() };
+        }
+        await SetLoaded();
+    }
+    private async Task Save()
+    {
+        await SetLoading();
+        foreach (var setting in Settings.Values)
+        {
+            if (setting?.Id == 0)
+            {
+                await DB.Setting.AddAsync(setting);
+            }
+            else if(setting != null)
+            {
+                DB.Setting.Update(setting);
+            }
+        }
+        await DB.SaveChangesAsync();
+        await SetLoaded();
+    }
+}
