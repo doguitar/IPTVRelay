@@ -15,77 +15,67 @@
 
     private List<XMLTVView>? guides;
     private Modal modal = default!;
+    private bool IsLoading = true;
 }
 
-<PageTitle>guides</PageTitle>
+<PageTitle>Guides</PageTitle>
 
-<h1>guides</h1>
-
-<Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" />
-
-@if (guides == null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <Button @onclick=Add>Add</Button>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Uri</th>
-                <th>Count</th>
-                <th></th>
-                <th></th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var g in guides)
-            {
+<h1>Guides</h1>
+<Loader IsLoading=@(IsLoading || guides == null)>
+    @if (guides != null)
+    {
+        <Button @onclick=Add>Add</Button>
+        <table class="table">
+            <thead>
                 <tr>
-                    <td style="white-space:nowrap">@g.Name</td>
-                    <td style="width:100%">@g.Uri</td>
-                    <td style="white-space:nowrap">@g.Count</td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(g.Id))>Edit</Button></td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Secondary" @onclick=@(()=>Child(g.Id, g.Name))>Create child</Button></td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(g.Id))>Delete</Button></td>
+                    <th>Name</th>
+                    <th>Uri</th>
+                    <th>Count</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
-
+            </thead>
+            <tbody>
+                @foreach (var g in guides)
+                {
+                    <tr>
+                        <td style="white-space:nowrap">@g.Name</td>
+                        <td style="width:100%">@g.Uri</td>
+                        <td style="white-space:nowrap">@g.Count</td>
+                        <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(g.Id))>Edit</Button></td>
+                        <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(g.Id))>Delete</Button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" HeaderCssClass="hidden" />
+</Loader>
 @code {
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            await Load();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    protected async Task Load()
+    {
+        IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         guides = await DB.XMLTV.Include(g => g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).ToListAsync();
+        IsLoading = false;
     }
 
     protected async Task Add()
     {
         await modal.ShowAsync<AddGuideModal>("Add Guide",
-        parameters: new Dictionary<string, object> {
-            { nameof(AddGuideModal.OnSave), EventCallback.Factory.Create<Tuple<string, XMLTV>>(this, Added) } });
-    }
-    protected async Task Child(long guideId, string name)
-    {
-        var file = Utility.XMLTV.GetFileInfo(Config, new XMLTV { Id = guideId });
-        var guide = new XMLTV { Uri = $"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}", Name = $"{name} - Child" };
-        await DB.XMLTV.AddAsync(guide);
-        await DB.SaveChangesAsync();
-
-        if (guide != null)
-        {
-            await modal.ShowAsync<AddGuideModal>("Edit Guide",
             parameters: new Dictionary<string, object> {
-            { nameof(AddGuideModal.OnSave), EventCallback.Factory.Create<Tuple<string, XMLTV>>(this, Added) },
-            { nameof(AddGuideModal.GuideId), guide.Id }});
-        }
-
-
+                { nameof(AddGuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) } });
     }
     protected async Task Delete(long guideId)
     {
@@ -93,7 +83,7 @@ else
         DB.Attach(p);
         DB.Remove(p);
         await DB.SaveChangesAsync();
-        guides.Remove(guides.FirstOrDefault(pl => pl.Id == p.Id));
+        await Load();
     }
     protected async Task Edit(long guideId)
     {
@@ -101,64 +91,70 @@ else
         if (guide != null)
         {
             await modal.ShowAsync<AddGuideModal>("Edit Playlist",
-            parameters: new Dictionary<string, object> {
-            { nameof(AddGuideModal.OnSave), EventCallback.Factory.Create<Tuple<string, XMLTV>>(this, Added) },
-            { nameof(AddGuideModal.GuideId), guide.Id }});
+                parameters: new Dictionary<string, object> {
+                    { nameof(AddGuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
+                    { nameof(AddGuideModal.ModelId), guide.Id }});
         }
     }
-    public async void Added(Tuple<string, XMLTV> data)
+    public async Task Added(XMLTVEventArgs args)
     {
         await modal.HideAsync();
-        var guide = await DB.XMLTV.Include(g => g.Items).FirstOrDefaultAsync(g => g.Id == data.Item2.Id) ?? new XMLTV { }; ;
-        guide.Uri = data.Item2.Uri;
-        guide.Name = data.Item2.Name;
-        if (data.Item1 != null)
+        IsLoading = true;
+        await InvokeAsync(StateHasChanged);
+        var guide = await DB.XMLTV.Include(g => g.Items).ThenInclude(i=>i.Mappings).FirstOrDefaultAsync(g => g.Id == args.Model.Id) ?? new XMLTV { }; ;
+        guide.Uri = args.Model.Uri;
+        guide.Name = args.Model.Name;
+        if (args.Content != null)
         {
-            var items = await Library.XMLTVParser.Parse(data.Item1);
-            try
+            var items = await Library.XMLTVParser.Parse(args.Content);
+            if (items != null && args.Model.Id > 0)
             {
-                if (data.Item2.Id > 0)
+                var groups = items.Concat(guide.Items).GroupBy(i => i.ChannelId, i => i).ToDictionary(g=>g.Key ?? string.Empty, g=>g.OrderByDescending(i=>i.Mappings.Count).ThenByDescending(i=>i.Id)).Select(kv=>kv.Value).ToList();
+
+                guide.Items = groups.Select(g => g.First()).Where(i=>i.Id > 0).ToList();
+                foreach (var g in groups)
                 {
-                    var dict = items.GroupBy(i => i.ChannelId, i => i).ToDictionary(g => g.Key, g => g.First());
-                    for (var i = 0; i < guide.Items.Count; i++)
+                    if (g.Count() == 1)
                     {
-                        if (!dict.ContainsKey(guide.Items[i].ChannelId))
+                        if (g.First().Id == 0)
                         {
-                            DB.Remove(guide.Items[i]);
-                            guide.Items.RemoveAt(i);
-                            i--;
+                            guide.Items.Add(g.First());
+                        }
+                        else
+                        {
+                            DB.Remove(g.First());
                         }
                     }
-
-                    dict = guide.Items.GroupBy(i => i.ChannelId, i => i).ToDictionary(g => g.Key, g => g.First());
-                    for (var i = 0; i < items.Count; i++)
+                    else
                     {
-                        if (!dict.ContainsKey(items[i].ChannelId))
+                        var group = g.OrderByDescending(i => i.Id);
+                        if (group.First().Id == 0)
                         {
-                            guide.Items.Add(items[i]);
-                            await DB.AddAsync(items[i]);
+                            guide.Items.Add(g.First());
                         }
-
+                        else
+                        {
+                            DB.RemoveRange(group.Skip(1).Where(i => i.Id > 0));
+                        }
                     }
-
-                    DB.Attach(guide);
                 }
-                else
+                DB.Attach(guide);
+            }
+            else
+            {
+                if (items != null)
                 {
                     guide.Items = items;
                     await DB.AddAsync(guide);
                 }
-
-                var file = Utility.XMLTV.GetFileInfo(Config, guide);
-                File.WriteAllText(file.FullName, data.Item1);
-
-                guides?.Add(new XMLTVView { Count = guide.Items.Count, Id = guide.Id, Uri = guide.Uri });
             }
-            catch (Exception e)
-            {
 
-            }
+            var file = Utility.XMLTV.GetFileInfo(Config, guide);
+            File.WriteAllText(file.FullName, args.Content);
+
+            guides?.Add(new XMLTVView { Count = guide.Items.Count, Id = guide.Id, Uri = guide.Uri });
+            await DB.SaveChangesAsync();
+            await Load();
         }
-        await DB.SaveChangesAsync();
     }
 }

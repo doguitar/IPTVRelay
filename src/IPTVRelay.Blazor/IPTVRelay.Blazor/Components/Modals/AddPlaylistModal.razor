@@ -1,4 +1,4 @@
-﻿@using IPTVRelay.Library
+﻿@inherits BaseModal<M3U>
 
 @code {
     protected class FilteredItem
@@ -10,153 +10,117 @@
     private bool preview { get; set; }
     private List<FilteredItem> FilteredItems = [];
     private List<M3UFilter> Filters = [];
-    private M3U? Playlist { get; set; }
-    private string TempFile { get; set; } = Guid.NewGuid().ToString().Replace("-", "");
-
-
-    [Parameter] public EventCallback<M3U> OnSave { get; set; }
-    [Parameter] public EventCallback<M3U> OnCancel { get; set; }
-    [Parameter] public long PlaylistId { get; set; }
 }
 
-<div class="row">
-
-    <div class="col-md-12">
-        <div class="input-group mb-3">
-            <InputText class="form-control" placeholder="Name" aria-label="Name" aria-describedby="basic-addon2" @bind-Value=Playlist.Name></InputText>
+<Loader IsLoading="@IsLoading">
+    @if (Model != null)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="input-group mb-3">
+                    <InputText class="form-control" placeholder="Name" aria-label="Name" aria-describedby="basic-addon2" @bind-Value=Model.Name></InputText>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
-<div class="row">
-    <div class="col-md-12">
-        <div class="input-group mb-3">
-            <InputText disabled="@(Playlist.ParentId > 0)" class="form-control" placeholder="M3U Location" aria-label="M3U Location" aria-describedby="basic-addon2" @bind-Value=Playlist.Uri></InputText>
-            <div class="input-group-append">
-                <Button Color="ButtonColor.Primary" @onclick=Load>Load</Button>
-            </div><div class="input-group-append">
-                <span class="input-group-text" id="basic-addon2">@FilteredItems.Count</span>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="input-group mb-3">
+                    <InputText disabled="@(Model.ParentId > 0)" class="form-control" placeholder="M3U Location" aria-label="M3U Location" aria-describedby="basic-addon2" @bind-Value=Model.Uri></InputText>
+                    <div class="input-group-append">
+                        <Button Color="ButtonColor.Primary" @onclick=GetUri>Load</Button>
+                    </div>
+                    <div class="input-group-append">
+                        <span class="input-group-text" id="basic-addon2">@(FilteredItems?.Count.ToString() ?? string.Empty)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (FilteredItems?.Count > 0)
+        {
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>Filters</h4>
+                    <Filter TFilter="M3UFilter" Filters="Filters" OnApply="@((f)=>OnNewFilterApply(f))" OnTest="@((f)=>OnNewFilterTest(f))" />
+                </div>
+            </div>
+        }
+    }
+    <div class="row">
+        <div class="col-md-12">
+            <div class="float-end">
+                <Button Color="ButtonColor.Info" @onclick=@((a) => {preview = !preview;})>Preview</Button>
+                <Button Color="ButtonColor.Primary" @onclick=@Save @Disabled="@CanSave">Save</Button>
+                <Button Color="ButtonColor.Danger" @onclick=@Cancel @Disabled="@CanSave">Cancel</Button>
             </div>
         </div>
     </div>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-        <h4>Filters</h4>
-        <Filter TFilter="M3UFilter" Filters="Filters" OnApply="@((f)=>OnNewFilterApply(f))" OnTest="@((f)=>OnNewFilterTest(f))" />
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-        <div class="float-end">
-            <Button Color="ButtonColor.Info" @onclick=@((a) => {preview = !preview;})>Preview</Button>
-            <Button Color="ButtonColor.Primary" @onclick=@Save>Save</Button>
-            <Button Color="ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
-        </div>
-    </div>
-</div>
-@if (preview)
-{
-    <div class="row">
-        <div class="col-md-12">
-            <h4>Preview</h4>
-            <table style="width:100%; table-layout:fixed;">
-                <tr><th>Title</th><th>Context</th></tr>
-                @for (var i = 0; i < FilteredItems.Count; i++)
-                {
-                    var c = FilteredItems[i];
-                    <tr class="@(string.Join(" ", new [] {c.Filtered? "filtered" : string.Empty}))">
-                        <td style="white-space:nowrap;">@(c.Item.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? c.Item.Url)</td>
-                        <td style="white-space:nowrap; overflow-x:scroll; width:100%">@c.Item.ToString()</td>
-                    </tr>
-                }
-            </table>
-        </div>
-    </div>
-}
-@code {
-    protected override async Task OnParametersSetAsync()
+    @if (preview)
     {
-        await base.OnParametersSetAsync();
-        Playlist = await DB.M3U.Include(p => p.Filters).FirstOrDefaultAsync(p => p.Id == PlaylistId) ?? new M3U();
-        Filters = Playlist.Filters;
-        if (Playlist.Id > 0)
-        {
-            await Utility.M3U.Populate(Config, Playlist, applyFilters: true);
-            FilteredItems = Playlist.Items.Select(i => new FilteredItem { Filtered = false, Item = i }).ToList();
-        }
+        <div class="row">
+            <div class="col-md-12">
+                <h4>Preview</h4>
+                <table style="width:100%; table-layout:fixed;">
+                    <tr><th>Title</th><th>Context</th></tr>
+                    @for (var i = 0; i < FilteredItems.Count; i++)
+                    {
+                        var c = FilteredItems[i];
+                        <tr class="@(string.Join(" ", new [] {c.Filtered? "filtered" : string.Empty}))">
+                            <td style="white-space:nowrap;">@(c.Item.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? c.Item.Url)</td>
+                            <td style="white-space:nowrap; overflow-x:scroll; width:100%">@c.Item.ToString()</td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        </div>
     }
+</Loader>
+@code {
 
     protected async Task OnNewFilterTest(M3UFilter filter)
     {
-        await Task.Run(() =>
-        {
-            for (var i = 0; i < FilteredItems.Count; i++)
-            {
-                var item = FilteredItems[i];
-                item.Filtered = Library.FilterHelper.DoFilter(item.Item, i, FilteredItems.Count, filter);
-                if (!item.Filtered)
-                {
-                    FilteredItems.Remove(item);
-                    FilteredItems.Insert(0, item);
-                }
-                InvokeAsync(StateHasChanged);
-            }
-        });
-        FilteredItems = FilteredItems.OrderBy(i => i.Filtered).ToList();
+        FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
     }
-
     protected async Task OnNewFilterApply(M3UFilter filter)
     {
-        Filters.Add(filter);
-        await Task.Run(() =>
+        FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
+    }
+
+    public override async Task Save()
+    {
+        Model.Items = FilteredItems.Select(f => f.Item).ToList();
+        Model.Count = Model.Items.LongCount();
+        Model.Filters = Filters;
+
+        await OnSave.InvokeAsync(new ModalEventArgs<M3U>(Model));
+    }
+    public override async Task Load()
+    {
+        Model = await DB.M3U.Include(p => p.Filters).FirstOrDefaultAsync(p => p.Id == ModelId) ?? new M3U();
+        Filters = Model.Filters;
+        if (Model.Id > 0)
         {
-            for (var i = 0; i < FilteredItems.Count; i++)
+            await Utility.M3U.Populate(Config, Model, applyFilters: true);
+            FilteredItems = Model.Items.Select(i => new FilteredItem { Filtered = false, Item = i }).ToList();
+        }
+    }
+    public async Task GetUri()
+    {
+        IsLoading = true;
+        var canSave = false;
+        await InvokeAsync(StateHasChanged);
+        if (Uri.TryCreate(Model?.Uri, UriKind.Absolute, out var uri))
+        {
+            var model = await Utility.M3U.Populate(Config, Model, refresh: true, applyFilters: true);
+            if (model?.Items.Count > 0)
             {
-                var item = FilteredItems[i];
-                item.Filtered = false;
-                var filtered = Library.FilterHelper.DoFilter(item.Item, i, FilteredItems.Count, filter);
-                if (filtered)
-                {
-                    FilteredItems.RemoveAt(i);
-                    i--;
-                    InvokeAsync(StateHasChanged);
-                }
-
+                FilteredItems = Model.Items.Select(i => new FilteredItem { Filtered = false, Item = i }).ToList();
+                Model.Count = Model.Items.LongCount();
+                canSave = true;
+                IsLoading = false;
             }
-        });
-    }
-
-    public async Task Save()
-    {
-        Playlist.Items = FilteredItems.Select(f => f.Item).ToList();
-        Playlist.Count = Playlist.Items.LongCount();
-        Playlist.Filters = Filters;
-
-        await OnSave.InvokeAsync(Playlist);
-    }
-    public async Task Cancel() { }
-    public async Task Load()
-    {
-        var dataFolder = Config.GetValue<string>("DATA_FOLDER");
-
-        var dir = new DirectoryInfo(dataFolder);
-        if (!dir.Exists)
-        {
-            dir.Create();
         }
-        var tempDir = new DirectoryInfo(Path.Combine(dir.FullName, "temp"));
-        if (!tempDir.Exists)
-        {
-            tempDir.Create();
-        }
-        var uri = new Uri(Playlist.Uri);
-        if ((uri.IsFile && Playlist.ParentId > 0) || Uri.IsWellFormedUriString(Playlist.Uri, UriKind.Absolute))
-        {
-            await Utility.M3U.Populate(Config, Playlist, refresh: true, applyFilters: true);
-            FilteredItems = Playlist.Items.Select(i => new FilteredItem { Filtered = false, Item = i }).ToList();
-            Playlist.Count = Playlist.Items.LongCount();
-        }
+        CanSave = canSave;
+        await InvokeAsync(StateHasChanged);
     }
 }

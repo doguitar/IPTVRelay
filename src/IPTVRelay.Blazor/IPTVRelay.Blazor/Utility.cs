@@ -1,4 +1,5 @@
 ﻿using IPTVRelay.Blazor.Components.Pages;
+using IPTVRelay.Blazor.Components.Shared;
 using IPTVRelay.Database;
 using IPTVRelay.Database.Models;
 using IPTVRelay.Library;
@@ -51,9 +52,12 @@ namespace IPTVRelay.Blazor
 
                 if (applyFilters && playlist.Filters.Count > 0)
                 {
-                    playlist.Items = await ApplyFiltersAsync(playlist);
+                    await ApplyFiltersAsync(playlist);
                 }
-                await WriteToDisk(config, playlist);
+                if(playlist.Id > 0)
+                {
+                    await WriteToDisk(config, playlist);
+                }
 
                 playlist.Count = playlist.Items.Count;
 
@@ -71,24 +75,9 @@ namespace IPTVRelay.Blazor
                 await File.WriteAllTextAsync(file.FullName, content.ToString());
                 return file;
             }
-            public static async Task<List<M3UItem>> ApplyFiltersAsync(Database.Models.M3U playlist)
+            public static async Task ApplyFiltersAsync(Database.Models.M3U playlist)
             {
-                var items = playlist.Items.ToList();
-                foreach (var f in playlist.Filters)
-                {
-                    var chunks = items.Select((Item, Index) => new { Item, Index }).Chunk(Environment.ProcessorCount);
-                    var bag = new ConcurrentBag<M3UItem>();
-                    foreach (var chunk in chunks)
-                    {
-                        await Task.WhenAll(chunk.Select(p => Task.Run(() =>
-                        {
-                            var filtered = FilterHelper.DoFilter(p.Item, p.Index, items.Count, f);
-                            if (!filtered) bag.Add(p.Item);
-                        })));
-                    }
-                    items = bag.ToList();
-                }
-                return items;
+                playlist.Items = await FilterHelper.DoFilter(playlist.Items, playlist.Filters); 
             }
             public static async Task<FileInfo> Generate(IConfiguration config, List<Database.Models.Mapping> mappings)
             {
@@ -122,25 +111,13 @@ namespace IPTVRelay.Blazor
                     {
                         previous = g.Key + i;
                         var m = list[i];
-                        if (m != null)
+                        if (m?.M3UId != null)
                         {
                             if (m.M3UId.HasValue && !playlists.ContainsKey(m.M3UId.Value))
                             {
                                 playlists[m.M3UId.Value] = (await Populate(config, new Database.Models.M3U { Id = m.M3UId.Value })).Items;
                             }
                             var playlistItems = playlists[m.M3UId.Value].ToList();
-
-                            foreach (var f in m.Filters)
-                            {
-                                for (var j = 0; j < playlistItems.Count; j++)
-                                {
-                                    if (FilterHelper.DoFilter(playlistItems[j], j, playlistItems.Count, f))
-                                    {
-                                        playlistItems.RemoveAt(j);
-                                        j--;
-                                    }
-                                }
-                            }
                             if (playlistItems.Count > 0)
                             {
                                 playlist.Items.Add(new M3UItem

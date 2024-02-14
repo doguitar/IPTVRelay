@@ -15,6 +15,8 @@ namespace IPTVRelay.Database.Enums
         [Description("Last")]
         Last,
         [Description("Index")]
-        Index
+        Index,
+        [Description("Sort")]
+        Sort
     }
 }

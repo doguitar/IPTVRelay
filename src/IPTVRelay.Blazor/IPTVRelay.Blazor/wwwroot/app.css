@@ -103,8 +103,12 @@ table.channels {
     font: 10px;
 }
 
+.hidden {
+    display: none;
+}
+
 table.filterTable {
-    width:100%;
+    width: 100%;
 }
 
     table.filterTable .filterType {
@@ -112,12 +116,46 @@ table.filterTable {
     }
 
     table.filterTable .filterContent {
-        width:100%;
+        width: 100%;
     }
 
-    button.btn{
-        min-width:5em;
+button.btn {
+    min-width: 5em;
+}
+
+    button.btn.dropdown-toggle {
+        min-width: 0em;
     }
-        button.btn.dropdown-toggle {
-            min-width: 0em;
-        }
+
+.loading-spinner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: white;
+    z-index: 1;
+}
+
+    .loading-spinner::before {
+        content: "";
+        margin-right: 10px;
+        box-sizing: border-box;
+        border: solid 2px transparent;
+        border-top-color: white;
+        border-left-color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spinner 0.6s linear infinite;
+    }
+
+@keyframes spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}

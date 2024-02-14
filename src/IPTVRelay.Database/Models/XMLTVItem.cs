@@ -13,8 +13,10 @@ namespace IPTVRelay.Database.Models
         public string? Logo { get; set; }
 
         [NotMapped]
-        public List<XMLTVItemData> Data { get; set; } = new List<XMLTVItemData>();
+        public List<XMLTVItemData> Data { get; set; } = [];
 
+
+        public virtual List<Mapping> Mappings { get; set; } = [];
         public virtual XMLTV? XMLTV { get; set; }
         public long XMLTVId { get; set; }
     }

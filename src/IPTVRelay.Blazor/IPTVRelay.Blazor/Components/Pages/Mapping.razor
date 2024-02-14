@@ -12,9 +12,7 @@
         public bool Filtered;
     }
 
-    private List<Database.Models.Mapping> Mappings { get; set; }
-    private List<M3U>? Playlists { get; set; }
-    private List<XMLTV>? Guides { get; set; }
+    private List<Database.Models.Mapping>? Mappings { get; set; }
 
     private Modal modal = default!;
 
@@ -27,45 +25,48 @@
     private List<FilteredItem> FilteredItems = [];
 
     private List<MappingFilter> Filters = [];
+
+    private bool IsLoading = true;
 }
 
 <PageTitle>Mapping</PageTitle>
 
 <h1>Mapping</h1>
 
-<Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" />
-@if (Mappings == null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <Button Color="ButtonColor.Primary" @onclick=Add>Add</Button>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Target Channel</th>
-                <th>Channel Name</th>
-                <th>Channel Id</th>
-                <th></th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var m in Mappings)
-            {
+<Loader IsLoading=@IsLoading>
+    @if (Mappings == null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <Button Color="ButtonColor.Primary" @onclick=Add>Add</Button>
+        <table class="table">
+            <thead>
                 <tr>
-                    <td style="white-space:nowrap">@m.Channel</td>
-                    <td style="white-space:nowrap">@m.Name</td>
-                    <td style="width:100%">@m.XMLTVItem?.ChannelId</td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(m.Id))>Edit</Button></td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(m.Id))>Delete</Button></td>
+                    <th>Target Channel</th>
+                    <th>Channel Name</th>
+                    <th>Channel Id</th>
+                    <th></th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
-
+            </thead>
+            <tbody>
+                @foreach (var m in Mappings)
+                {
+                    <tr>
+                        <td style="white-space:nowrap">@m.Channel</td>
+                        <td style="white-space:nowrap">@m.Name</td>
+                        <td style="width:100%">@m.XMLTVItem?.ChannelId</td>
+                        <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(m.Id))>Edit</Button></td>
+                        <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(m.Id))>Delete</Button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</Loader>
+<Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" HeaderCssClass="hidden" />
 @code {
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -78,22 +79,23 @@ else
     }
     protected async Task Load()
     {
+        IsLoading = true;
+        await InvokeAsync(StateHasChanged);
         Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
-        Playlists = await DB.M3U.OrderBy(m => m.Created).ToListAsync();
-        Guides = await DB.XMLTV.OrderBy(m => m.Created).ToListAsync();
+        IsLoading = false;
     }
 
     protected async Task Edit(long id)
     {
         await modal.ShowAsync<AddMappingModal>("Edit Mapping",
             parameters: new Dictionary<string, object> {
-            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<long>(this, Edited) },
+            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Edited) },
             { nameof(AddMappingModal.MappingId), id }});
 
     }
     protected async Task Delete(long id)
     {
-        var mapping = await DB.Mapping.Include(m=>m.Filters).Where(m => m.Id == id).FirstOrDefaultAsync();
+        var mapping = await DB.Mapping.Include(m => m.Filters).Where(m => m.Id == id).FirstOrDefaultAsync();
         if (mapping != null)
         {
             DB.Remove(mapping);
@@ -105,96 +107,16 @@ else
     {
         await modal.ShowAsync<AddMappingModal>("Add Mapping",
             parameters: new Dictionary<string, object> {
-            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<long>(this, Added) },
+            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Added) },
             { nameof(AddMappingModal.MappingId), 0L }});
 
     }
-    public async Task Edited(long mappingId)
+    public async Task Edited(ModalEventArgs<Database.Models.Mapping> model)
     {
-        Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
+        await Load();
     }
-    public async Task Added(long mappingId)
+    public async Task Added(ModalEventArgs<Database.Models.Mapping> model)
     {
-        Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
-    }
-
-    protected async Task OnGuideChanged(XMLTV guide)
-    {
-        if (guide.Items.Count == 0)
-        {
-            guide.Items = await Library.XMLTVParser.Parse(await Utility.XMLTV.Populate(Config, guide, true));
-        }
-        SelectedGuide = guide;
-    }
-    protected async Task OnSelectChannel(XMLTVItem channel)
-    {
-        SelectedChannel = channel;
-        Current = await DB.Mapping.Include(m => m.XMLTVItem).Where(m => m.XMLTVItem != null && m.XMLTVItem.Id == channel.Id).FirstOrDefaultAsync();
-    }
-
-    protected async Task OnPlaylistChanged(M3U playlist)
-    {
-        SelectedPlaylist = playlist;
-        await Utility.M3U.Populate(Config, playlist);
-        FilteredItems = playlist.Items.Select(i => new FilteredItem { Item = i, Filtered = false }).ToList();
-        if (Current != null)
-        {
-            foreach (var f in Current.Filters)
-            {
-                await OnNewFilterApply(f);
-            }
-        }
-        else
-        {
-            Filters = [];
-        }
-    }
-
-    protected async Task OnNewFilterTest(MappingFilter filter)
-    {
-        for (var i = 0; i < FilteredItems.Count; i++)
-        {
-            var item = FilteredItems[i];
-            item.Filtered = Library.FilterHelper.DoFilter(item.Item, i, FilteredItems.Count, filter);
-        }
-        FilteredItems = FilteredItems.OrderBy(i => i.Filtered).ToList();
-    }
-
-    protected async Task OnNewFilterApply(MappingFilter filter)
-    {
-        Filters.Add(filter);
-        for (var i = 0; i < FilteredItems.Count; i++)
-        {
-            var item = FilteredItems[i];
-            item.Filtered = false;
-            var filtered = Library.FilterHelper.DoFilter(item.Item, i, FilteredItems.Count, filter);
-            if (filtered)
-            {
-                FilteredItems.RemoveAt(i);
-                i--;
-            }
-
-        }
-    }
-
-    protected async Task Save()
-    {
-        var channel = await DB.XMLTVItem.FirstOrDefaultAsync(i => i.ChannelId == SelectedChannel.ChannelId);
-
-        var mapping = Current ?? new Database.Models.Mapping();
-
-        mapping.XMLTVItemId = channel.Id;
-        mapping.M3UId = SelectedPlaylist.Id;
-        mapping.Filters = Filters;
-        mapping.Name = SelectedChannel.Data.Where(d => d.Key == "display-name")?.FirstOrDefault()?.Value ?? SelectedChannel.ChannelId;
-
-        if (mapping.Id == 0)
-        {
-            await DB.Mapping.AddAsync(mapping);
-        }
-        await DB.SaveChangesAsync();
-
-        SelectedChannel = null;
-        Filters = [];
+        await Load();
     }
 }

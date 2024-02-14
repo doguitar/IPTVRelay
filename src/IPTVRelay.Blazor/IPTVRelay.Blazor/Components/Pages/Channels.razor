@@ -23,62 +23,101 @@
                 }
             }
         }
+        public long ActualChannel { get; set; }
     }
 
     private List<MappingView> Mappings { get; set; }
+    private bool IsLoading { get; set; } = true;
 }
-
-
 
 <PageTitle>Channels</PageTitle>
 
 <h1>Channels</h1>
-<Button Color="ButtonColor.Primary" @onclick=@(Generate)>Save and Generate</Button>
-<div class="row">
-    <div class="col-md-12">
-        <table class="channels">
-            @{
-                long previous = 0;
-                foreach (var g in Mappings.GroupBy(m => m.Mapping.Channel))
-                {
-                    var list = g.OrderBy(g => g.Mapping.Name).ToArray();
-                    var start = Math.Max(g.Key, previous);
-                    for (long i = 0; i < list.LongLength; i++)
+<Loader IsLoading=@IsLoading>
+    <div class="row">
+        <div class="col-md-12">
+            <Button Color="ButtonColor.Primary" @onclick=@(Generate)>Save and Generate</Button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <table class="channels">
+                @{
+                    foreach (var m in Mappings)
                     {
-                        previous = g.Key + i;
-                        var m = list[i];
                         <tr>
                             <td class="targetChannel">
-                                <NumberInput tabindex="@previous" TValue="long" EnableMinMax=true Min="1" Max="99999" @bind-Value=@m.Mapping.Channel></NumberInput>
+                                <NumberInput tabindex="@m.ActualChannel" TValue="long" EnableMinMax=true Min="1" Max="99999" @bind-Value=@m.Mapping.Channel @onblur="((a) => Recalculate())"></NumberInput>
                             </td>
                             <td class="actualChannel">
-                                @(previous)
+                                @(m.ActualChannel)
                             </td>
                             <td class="name">
-                                <InputText tabindex="@(previous+10000)" @bind-Value=@m.Mapping.Name></InputText>
+                                <InputText tabindex="@(m.ActualChannel+10000)" @bind-Value=@m.Mapping.Name></InputText>
                             </td>
                         </tr>
+
                     }
                 }
-            }
-        </table>
+            </table>
+        </div>
     </div>
-</div>
-
+</Loader>
 @code {
     protected override async Task OnInitializedAsync()
     {
-        Mappings = await DB.Mapping
-            .Include(m => m.XMLTVItem)
-            .Include(m => m.M3U)
-            .Include(m => m.Filters)
-            .OrderBy(m => m.Channel).ThenBy(m => m.Name)
-            .Select(m => new MappingView(m)).ToListAsync();
+        await Load();
     }
+    private async Task Load()
+    {
+        IsLoading = true;
+        var grouped = (await DB.Mapping
+                .Include(m => m.XMLTVItem)
+                .Include(m => m.M3U)
+                .Include(m => m.Filters)
+                .OrderBy(m => m.Channel).ThenBy(m => m.Name)
+                .ToListAsync())
+                .GroupBy(m => m.Channel);
+
+        Mappings = [];
+
+        long previous = 0;
+        foreach (var g in grouped)
+        {
+            var list = g.OrderBy(g => g.Name).ToArray();
+            var start = Math.Max(g.Key, previous);
+            for (long i = 0; i < list.LongLength; i++)
+            {
+                previous = g.Key + i;
+                var m = list[i];
+                Mappings.Add(new MappingView(m) { ActualChannel = previous });
+            }
+        }
+        IsLoading = false;
+    }
+
+    protected void Recalculate()
+    {
+        long previous = 0;
+        var grouped = Mappings.GroupBy(m => m.Mapping.Channel);
+        foreach (var g in grouped)
+        {
+            var list = g.OrderBy(g => g.Mapping.Name).ToArray();
+            var start = Math.Max(g.Key, previous);
+            for (long i = 0; i < list.LongLength; i++)
+            {
+                previous = g.Key + i;
+                var m = list[i];
+                m.ActualChannel = previous;
+            }
+        }
+    }
+
     protected async Task Generate()
     {
         await DB.SaveChangesAsync();
         await Utility.M3U.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
         await Utility.XMLTV.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
+        await Load();
     }
 }

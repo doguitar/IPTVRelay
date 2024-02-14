@@ -41,7 +41,7 @@
       },
       "publishAllPorts": true,
       "useSSL": false,
-      "DockerfileRunArguments": "-v ../data:/data -e UMASK=022 -e PORT=8080 -e IPTV_DATA_FOLDER=/data/ -e IPTV_PORT=8080 -p 8080:8080/tcp"
+      "DockerfileRunArguments": "-v C:\\Users\\seanseymour\\source\\repos\\IPTVRelay\\data\\:/data -e UMASK=022 -e PORT=8080 -e IPTV_DATA_FOLDER=/data/ -e IPTV_PORT=8080 -p 8080:8080/tcp"
     }
   },
   "$schema": "http://json.schemastore.org/launchsettings.json",

@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\IPTVRelay.Database\IPTVRelay.Database.csproj" />
+    <ProjectReference Include="..\..\IPTVRelay.Library.Components\IPTVRelay.Library.Components.csproj" />
     <ProjectReference Include="..\..\IPTVRelay.Library\IPTVRelay.Library.csproj" />
     <ProjectReference Include="..\IPTVRelay.Blazor.Client\IPTVRelay.Blazor.Client.csproj" />
     <PackageReference Include="Blazor.Bootstrap" Version="1.11.1" />

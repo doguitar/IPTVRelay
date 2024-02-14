@@ -1,5 +1,6 @@
 ﻿@page "/playlists"
 @using Components.Modals;
+@using IPTVRelay.Library.Components
 @attribute [StreamRendering]
 
 @rendermode InteractiveServer
@@ -21,42 +22,38 @@
 
 <h1>Playlists</h1>
 
-<Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" />
-
-@if (playlists == null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <Button @onclick=Add>Add</Button>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Uri</th>
-                <th>Count</th>
-                <th></th>
-                <th></th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in playlists)
-            {
+<Loader IsLoading="playlists == null">
+    @if (playlists != null)
+    {
+        <Button @onclick=Add Color="ButtonColor.Primary">Add</Button>
+        <table class="table">
+            <thead>
                 <tr>
-                    <td style="white-space:nowrap">@p.Name</td>
-                    <td style="width:100%">@p.Uri</td>
-                    <td style="white-space:nowrap">@p.Count</td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(p.Id))>Edit</Button></td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Secondary" @onclick=@(()=>Child(p.Id, p.Name))>Create child</Button></td>
-                    <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(p.Id))>Delete</Button></td>
+                    <th>Name</th>
+                    <th>Uri</th>
+                    <th>Count</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
-
+            </thead>
+            <tbody>
+                @foreach (var p in playlists)
+                {
+                    <tr>
+                        <td style="white-space:nowrap">@p.Name</td>
+                        <td style="width:100%">@p.Uri</td>
+                        <td style="white-space:nowrap">@p.Count</td>
+                        <td style="white-space:nowrap"><Button Color="ButtonColor.Primary" @onclick=@(()=>Edit(p.Id))>Edit</Button></td>
+                        <td style="white-space:nowrap"><Button Color="ButtonColor.Secondary" @onclick=@(()=>Child(p.Id, p.Name))>Create child</Button></td>
+                        <td style="white-space:nowrap"><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(p.Id))>Delete</Button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" ShowCloseButton="false" HeaderCssClass="hidden" />
+</Loader>
 @code {
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -76,8 +73,8 @@ else
     {
         await modal.ShowAsync<AddPlaylistModal>("Add Playlist",
         parameters: new Dictionary<string, object> {
-            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<M3U>(this, Added) } });
-        { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
+            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Added) },
+            { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) }});
     }
     protected async Task Child(long playlistId, string name)
     {
@@ -90,9 +87,9 @@ else
         {
             await modal.ShowAsync<AddPlaylistModal>("Add Playlist",
             parameters: new Dictionary<string, object> {
-            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<M3U>(this, Added) },
+            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Edited) },
             { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
-            { nameof(AddPlaylistModal.PlaylistId), playlist.Id }});
+            { nameof(AddPlaylistModal.ModelId), playlist.Id }});
         }
 
 
@@ -110,15 +107,17 @@ else
         if (playlist != null)
         {
             await modal.ShowAsync<AddPlaylistModal>("Edit Playlist",
-            parameters: new Dictionary<string, object> {
-            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<M3U>(this, Edited) },
-            { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
-        { nameof(AddPlaylistModal.PlaylistId), playlist.Id }});
+                parameters: new Dictionary<string, object> {
+                { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Edited) },
+                { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
+                { nameof(AddPlaylistModal.ModelId), playlist.Id }});
+
         }
     }
 
-    public async void Added(M3U playlist)
+    public async void Added(ModalEventArgs<M3U> args)
     {
+        var playlist = args.Model;
         await modal.HideAsync();
         if (playlist != null)
         {
@@ -131,8 +130,9 @@ else
         }
         await Load();
     }
-    public async void Edited(M3U playlist)
+    public async void Edited(ModalEventArgs<M3U> args)
     {
+        var playlist = args.Model;
         await modal.HideAsync();
         if (playlist != null)
         {
