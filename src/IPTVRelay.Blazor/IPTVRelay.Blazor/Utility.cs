@@ -123,11 +123,11 @@ namespace IPTVRelay.Blazor
                             {
                                 playlist.Items.Add(new M3UItem
                                 {
-                                    Url = playlistItems.First().Url,
+                                    Url = playlistItem.Url,
                                     Data = [
                                         new M3UItemData { Key = "tvg-id", Value = m.Id.ToString() },
                                         new M3UItemData { Key = "tvg-name", Value = m.Name },
-                                        new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItems.First().Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
+                                        new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
                                         new M3UItemData { Key = "tvg-chno", Value = m.Channel.ToString() },
                                         new M3UItemData { Key = "TrackTitle", Value = m.Name }
                                     ]
