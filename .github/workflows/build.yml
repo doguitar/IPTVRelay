@@ -25,10 +25,10 @@ jobs:
         -   name: Check out
             uses: actions/checkout@v3
       
-        -   name: Setup .NET
+        -   name: .NET
             uses: actions/setup-dotnet@v3
 
-        -   name: Setup Environment Variables
+        -   name: Environment Variables
             id: variables
             shell: bash
             run: 
@@ -40,3 +40,11 @@ jobs:
                 echo "IPTVRELAY_VERSION=$IPTVRELAY_VERSION" >> "$GITHUB_ENV"
                 echo "major_version=${{ env.IPTVRELATE_MAJOR_VERSION }}" >> "$GITHUB_OUTPUT"
                 echo "version=$IPTVRELAY_VERSION" >> "$GITHUB_OUTPUT"
+
+        -   name: Build
+            shell: bash
+            run: ./build.sh
+
+        -   name: Package
+            shell: bash
+            run: ./test.sh
