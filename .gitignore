@@ -402,3 +402,4 @@ FodyWeavers.xsd
 /src/IPTVRelay.Blazor/IPTVRelay.Blazor/IPTVRelay.db-shm
 /src/IPTVRelay.Blazor/IPTVRelay.Blazor/IPTVRelay.db-wal
 /data
+/dockerdata

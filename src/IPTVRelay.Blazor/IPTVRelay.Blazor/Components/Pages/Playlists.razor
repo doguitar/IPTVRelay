@@ -1,4 +1,5 @@
-﻿@page "/playlists"
+﻿@inherits BaseComponent
+@page "/playlists"
 @using Components.Modals;
 @using IPTVRelay.Library.Components
 @attribute [StreamRendering]
@@ -22,7 +23,7 @@
 
 <h1>Playlists</h1>
 
-<Loader IsLoading="playlists == null">
+<Loader IsLoading="IsLoading">
     @if (playlists != null)
     {
         <Button @onclick=Add Color="ButtonColor.Primary">Add</Button>
@@ -66,7 +67,9 @@
     }
     protected async Task Load()
     {
+        await SetLoading();
         playlists = await DB.M3U.OrderBy(m => m.Created).Select(m => new M3UView { Id = m.Id, Name = m.Name, Uri = m.Parent != null ? $"Parent: {m.Parent.Name}" : m.Uri, Count = m.Count }).AsNoTracking().ToListAsync();
+        await SetLoaded();
     }
 
     protected async Task Add()
@@ -116,7 +119,7 @@
     }
 
     public async void Added(ModalEventArgs<M3U> args)
-    {
+    {        
         var playlist = args.Model;
         await modal.HideAsync();
         if (playlist != null)

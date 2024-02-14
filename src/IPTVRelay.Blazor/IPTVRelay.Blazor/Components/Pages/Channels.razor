@@ -1,4 +1,5 @@
-﻿@page "/channels"
+﻿@inherits BaseComponent
+@page "/channels"
 @using Components.Modals;
 @attribute [StreamRendering]
 
@@ -27,7 +28,6 @@
     }
 
     private List<MappingView> Mappings { get; set; }
-    private bool IsLoading { get; set; } = true;
 }
 
 <PageTitle>Channels</PageTitle>
@@ -42,7 +42,8 @@
     <div class="row">
         <div class="col-md-12">
             <table class="channels">
-                @{
+                @if(Mappings != null)
+                {
                     foreach (var m in Mappings)
                     {
                         <tr>
@@ -70,7 +71,7 @@
     }
     private async Task Load()
     {
-        IsLoading = true;
+        await SetLoading();
         var grouped = (await DB.Mapping
                 .Include(m => m.XMLTVItem)
                 .Include(m => m.M3U)
@@ -93,7 +94,7 @@
                 Mappings.Add(new MappingView(m) { ActualChannel = previous });
             }
         }
-        IsLoading = false;
+        await SetLoaded();
     }
 
     protected void Recalculate()
@@ -115,8 +116,7 @@
 
     protected async Task Generate()
     {
-        IsLoading = true;
-        await InvokeAsync(StateHasChanged);
+        await SetLoading();
         await DB.SaveChangesAsync();
         await Utility.M3U.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
         await Utility.XMLTV.Generate(Config, Mappings.Select(m => m.Mapping).ToList());

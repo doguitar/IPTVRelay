@@ -112,7 +112,7 @@
     <div class="row">
         <div class="col-md-12">
             <div class="float-end">
-                <Button Color="ButtonColor.Primary" @onclick=@Save>Save</Button>
+                <Button Color="ButtonColor.Primary" @onclick=@Save Disabled=!CanSave>Save</Button>
                 <Button Color="ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
             </div>
         </div>
@@ -121,8 +121,7 @@
 @code {
     protected async Task GuideSelected(XMLTV guide)
     {
-        IsLoading = true;
-        await InvokeAsync(StateHasChanged);
+        await SetLoading();
         if (!ParsedGuides.TryGetValue(guide.Id, out var items))
         {
             items = (await XMLTVParser.Parse(await Utility.XMLTV.Populate(Config, guide))).OrderBy(c => c.ChannelId).ToList();
@@ -130,19 +129,18 @@
         }
         guide.Items = items;
         SelectedGuide = guide;
-        IsLoading = false;
+        await SetLoaded();
     }
     protected async Task ChannelSelected(XMLTVItem channel)
     {
-        IsLoading = true;
-        await InvokeAsync(StateHasChanged);
+        await SetLoading();
         SelectedChannel = channel;
-        IsLoading = false;
+        CanSave = true;
+        await SetLoaded();
     }
     protected async Task PlaylistSelected(M3U playlist)
     {
-        IsLoading = true;
-        await InvokeAsync(StateHasChanged);
+        await SetLoading();
         SelectedPlaylist = playlist;
         SelectedItems = (await Utility.M3U.Populate(Config, playlist)).Items.OrderBy(i => i.Url).ToList();
 
@@ -173,38 +171,36 @@
         }
         FilteredItems = items.Select(c => new FilteredItem { Filtered = false, Item = c }).ToList();
 
-        IsLoading = false;
+        await SetLoaded();
     }
     protected async Task TestFilter(MappingFilter filter)
     {
-        IsLoading = true;
-        await InvokeAsync(StateHasChanged);
+        await SetLoading();
         var filtered = await Library.FilterHelper.DoFilter(FilteredItems, filter);
         await FilteredItems.Except(filtered).ParallelForEachAsync(i => i.Filtered = true);
         await filtered.ParallelForEachAsync(i => i.Filtered = false);
         FilteredItems = FilteredItems.OrderBy(fi => fi.Filtered).ThenBy(fi => fi.Item.Url).ToList();
-        IsLoading = false;
+        await SetLoaded();
     }
     protected async Task ApplyFilter(MappingFilter filter)
     {
-        IsLoading = true;
-        await InvokeAsync(StateHasChanged);
+        await SetLoading();
         Filters.Add(filter);
         FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
-        IsLoading = false;
+        await SetLoaded();
     }
     protected async Task DeleteFilter(MappingFilter filter)
     {
-        IsLoading = true;
-        await InvokeAsync(StateHasChanged);
+        await SetLoading();
         Filters.Remove(filter);
         FilteredItems = (await Library.FilterHelper.DoFilter(SelectedItems, Filters)).Select(m => new FilteredItem { Filtered = false, Item = m }).ToList();
-        IsLoading = false;
+        await SetLoaded();
     }
 
     public override async Task Load()
     {
-        IsLoading = true;
+        await SetLoading();
+        CanSave = false;
         await InvokeAsync(StateHasChanged);
         if (MappingId > 0)
         {
@@ -226,11 +222,11 @@
         }
         Guides = await DB.XMLTV.OrderBy(g => g.Created).AsNoTracking().ToListAsync();
         Playlists = await DB.M3U.OrderBy(p => p.Created).AsNoTracking().ToListAsync();
-        IsLoading = false;
+        await SetLoaded();
     }
     public override async Task Save()
     {
-        IsLoading = true;
+        await SetLoading();
         var mapping = await DB.Mapping.FirstOrDefaultAsync(m => m.Id == MappingId) ?? new();
         var channel = await DB.XMLTVItem.FirstOrDefaultAsync(c => c.ChannelId == SelectedChannel.ChannelId);
         if (channel != null)
@@ -248,11 +244,12 @@
         }
 
         SelectedChannel = null;
+        CanSave = false;
         Filters = [];
         await PlaylistSelected(SelectedPlaylist);
 
         await OnSave.InvokeAsync(new ModalEventArgs<Mapping>(mapping));
-        IsLoading = false;
+        await SetLoaded();
     }
     public override async Task Cancel()
     {

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace IPTVRelay.Library.Components
 {
-    public abstract class BaseModal<T, E> : ComponentBase where E : EventArgs
+    public abstract class BaseModal<T, E> : BaseComponent where E : EventArgs
     {
         private long modelId;
 
@@ -19,7 +19,6 @@ namespace IPTVRelay.Library.Components
         [Parameter] public string LoadingMessage { get; set; } = "Loading...";
 
         private bool Reload { get; set; } = true;
-        protected bool IsLoading { get; set; }
         protected bool CanSave { get; set; }
 
         private bool Initialized { get; set; }
@@ -49,10 +48,10 @@ namespace IPTVRelay.Library.Components
             await base.OnParametersSetAsync();
             if (Reload)
             {
-                IsLoading = true;
+                await SetLoading();
                 await InvokeAsync(StateHasChanged);
                 await Load();
-                IsLoading = false;
+                await SetLoaded();
                 Initialized = true;
                 await InvokeAsync(StateHasChanged);
             }
