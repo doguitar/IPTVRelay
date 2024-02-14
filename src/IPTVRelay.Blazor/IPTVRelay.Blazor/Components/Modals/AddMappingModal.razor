@@ -147,7 +147,7 @@
         SelectedItems = (await Utility.M3U.Populate(Config, playlist)).Items.OrderBy(i => i.Url).ToList();
 
         var items = SelectedItems;
-        if (MappingId == 0)
+        if (MappingId == 0 && SelectedChannel != null)
         {
             var values = SelectedChannel.Data.Select(kv => kv.Value).Where(v => !string.IsNullOrWhiteSpace(v));
             var matches = values.Select(v => System.Text.RegularExpressions.Regex.Matches(v, "\\b[a-z0-9]+\\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Where(m => m.Success).Select(m => m.Value));
