@@ -22,6 +22,12 @@ jobs:
             version: ${{ steps.variables.outputs.version }}
             major_version: ${{ steps.variables.outputs.major_version }}
         steps:
+        -   name: Check out
+            uses: actions/checkout@v3
+      
+        -   name: Setup .NET
+            uses: actions/setup-dotnet@v3
+
         -   name: Setup Environment Variables
             id: variables
             shell: bash
