@@ -26,32 +26,26 @@
 <Loader IsLoading="IsLoading">
     @if (playlists != null)
     {
-        <AddButton @onclick=Add></AddButton>
-        <table class="table table-dark">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Uri</th>
-                    <th>Count</th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in playlists)
-                {
-                    <tr>
-                        <td style="white-space:nowrap">@p.Name</td>
-                        <td style="width:100%">@p.Uri</td>
-                        <td style="white-space:nowrap">@p.Count</td>
-                        <td style="white-space:nowrap"><EditButton OnClick=@(()=>Edit(p.Id))></EditButton></td>
-                        <td style="white-space:nowrap"><ChildButton OnClick=@(()=>Child(p.Id, p.Name))></ChildButton></td>
-                        <td style="white-space:nowrap"><DeleteButton OnClick=@(()=>Delete(p.Id))></DeleteButton></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <Table TItem=M3UView Items="playlists" class="nowrap">
+            <HeaderColumns>
+                <th>Name</th>
+                <th class="fill">Uri</th>
+                <th>Count</th>
+            </HeaderColumns>
+            <HeaderButtons>
+                <AddButton @onclick=Add></AddButton>
+            </HeaderButtons>
+            <RowColumns>
+                <td>@context.Name</td>
+                <td class="ellipsis">@context.Uri</td>
+                <td>@context.Count</td>
+            </RowColumns>
+            <RowButtons>
+                <EditButton OnClick=@(()=>Edit(context.Id))></EditButton>
+                <ChildButton OnClick=@(()=>Child(context.Id, context.Name))></ChildButton>
+                <DeleteButton OnClick=@(()=>Delete(context.Id))></DeleteButton>
+            </RowButtons>
+        </Table>
     }
     <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" ShowCloseButton="false" HeaderCssClass="hidden" />
 </Loader>
@@ -119,7 +113,7 @@
     }
 
     public async void Added(ModalEventArgs<M3U> args)
-    {        
+    {
         var playlist = args.Model;
         await modal.HideAsync();
         if (playlist != null)

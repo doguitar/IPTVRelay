@@ -20,34 +20,26 @@
 <h1>Settings</h1>
 
 <Loader IsLoading=@IsLoading>
-    <table class="table table-dark">
-        <thead>
-            <tr>
-                <th>Type</th>
-                <th>Value</th>
-                <th><SaveButton OnClick=@(()=>Save())></SaveButton></th>
-            </tr>
-        </thead>
-        <tbody>
+    <Table TItem=Setting>
+        <HeaderColumns>
+            <th>Type</th>
+            <th class="fill">Value</th>
+        </HeaderColumns>
+        <HeaderButtons>
+            <SaveButton OnClick=@(()=>Save())></SaveButton>
+        </HeaderButtons>
+        <PreRows>
             <tr>
                 <td>Api Key</td>
-                <td>
-                    <InputText class="form-control" @bind-Value=ApiKey />
-                </td>
-                <td>
-                    <RefreshButton OnClick=@(()=> ApiKey = Guid.NewGuid().ToString().Replace("-", string.Empty))></RefreshButton>
-                </td>
+                <td><InputText class="form-control" @bind-Value=ApiKey /></td>
+                <td class="rowButtons"><RefreshButton OnClick=@(()=> ApiKey = Guid.NewGuid().ToString().Replace("-", string.Empty))></RefreshButton></td>
             </tr>
             <tr>
                 <td>Update Cron</td>
-                <td>
-                    <InputText class="form-control" @bind-Value=CronExpression />
-                </td>
-                <td>
-                </td>
+                <td colspan="2"><InputText class="form-control" @bind-Value=CronExpression /></td>
             </tr>
-        </tbody>
-    </table>
+        </PreRows>
+    </Table>
 </Loader>
 
 @code {
@@ -71,7 +63,7 @@
             {
                 await DB.Setting.AddAsync(setting);
             }
-            else if(setting != null)
+            else if (setting != null)
             {
                 DB.Setting.Update(setting);
             }

@@ -1,9 +1,11 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
+
 main {
     height: unset !important;
 }
+
 a, .btn-link {
     color: #006bb7;
 }
@@ -24,7 +26,11 @@ button.btn.btn-icon {
 }
 
 .top-row {
-    height: 12em !important;
+    background-image: url(/logo.png);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: left;
+    background-origin: content-box;
 }
 
 .content {
@@ -63,6 +69,31 @@ h1:focus {
 
 tr.filtered, div.filtered {
     background-color: #ff000060;
+}
+
+.nowrap, table.nowrap td, table.nowrap th, tr.nowrap td, tr.nowrap td, tbody.nowrap td, thead.nowrap th {
+    white-space: nowrap;
+}
+
+table td.rowButtons, table th.headerButtons {
+    white-space: nowrap;
+    text-align: end;
+    width: 0;
+}
+
+table td.fill, table th.fill {
+    width: 100%;
+}
+
+table td.shrink, table th.shrink {
+    width: 0;
+}
+
+table td.ellipsis, table th.ellipsis {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 table.channels {
@@ -158,5 +189,18 @@ button.btn {
 @keyframes spinner {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@media (min-width: 641px) {
+    .nav-scrollable {
+        display: block;
+        height: calc(100vh - 12rem) !important;
+        overflow-y: auto;
+    }
+
+    .top-row {
+        height: 12em !important;
+        background-position: center;
     }
 }

@@ -1,0 +1,58 @@
+﻿@typeparam TItem
+
+@code {
+    [Parameter] public RenderFragment? HeaderColumns { get; set; }
+    [Parameter] public RenderFragment? HeaderButtons { get; set; }
+    [Parameter] public RenderFragment? PreRows { get; set; }
+    [Parameter] public RenderFragment<TItem>? RowColumns { get; set; }
+    [Parameter] public RenderFragment<TItem>? RowButtons { get; set; }
+    [Parameter] public RenderFragment? PostRows { get; set; }
+
+    [Parameter] public List<TItem>? Items { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}
+
+
+<table class="table table-dark @Class">
+    <thead>
+        <tr>
+            @if (HeaderColumns != null)
+            {
+                @HeaderColumns
+            }
+            @if (HeaderButtons != null)
+            {
+                <th class="headerButtons">
+                    @HeaderButtons
+                </th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @if (PreRows != null)
+        {
+            @PreRows
+        }
+        @if (Items != null && RowColumns != null)
+        {
+            @foreach (var item in Items)
+            {
+
+                <tr>
+                    @RowColumns(item)
+                    @if (RowButtons != null)
+                    {
+                        <td class="rowButtons">
+                            @RowButtons(item)
+                        </td>
+                    }
+                </tr>
+            }
+        }
+        @if (PostRows != null)
+        {
+            @PostRows
+        }
+    </tbody>
+</table>
