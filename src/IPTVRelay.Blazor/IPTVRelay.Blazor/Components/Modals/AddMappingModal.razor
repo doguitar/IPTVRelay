@@ -3,283 +3,297 @@
 
 @code {
 
-	protected class FilteredItem
-	{
-		public M3UItem? Item;
-		public bool Filtered;
+    protected class FilteredItem
+    {
+        public M3UItem? Item;
+        public bool Filtered;
 
-		public override string ToString()
-		{
-			return Item?.ToString() ?? string.Empty;
-		}
-	}
+        public override string ToString()
+        {
+            return Item?.ToString() ?? string.Empty;
+        }
+    }
 
-	private List<XMLTV> Guides { get; set; } = [];
-	private List<M3U> Playlists { get; set; } = [];
+    private List<XMLTV> Guides { get; set; } = [];
+    private List<M3U> Playlists { get; set; } = [];
 
-	private Dropdown ddlPlaylists = default!;
-	private Dropdown ddlGuides = default!;
-	private Filter<MappingFilter, FilteredItem> filter = default!;
+    private Dropdown ddlPlaylists = default!;
+    private Dropdown ddlGuides = default!;
+    private Filter<MappingFilter, FilteredItem> filter = default!;
 
-	[Parameter] public long MappingId { get; set; }
+    [Parameter] public long MappingId { get; set; }
 
-	private XMLTV? SelectedGuide = null;
-	private XMLTVItem? SelectedChannel;
-	private Database.Models.Mapping? Current;
+    private XMLTV? SelectedGuide = null;
+    private XMLTVItem? SelectedChannel;
+    private Database.Models.Mapping? Current;
 
-	private M3U? SelectedPlaylist;
-	private List<M3UItem>? SelectedItems;
+    private M3U? SelectedPlaylist;
+    private List<M3UItem>? SelectedItems;
 
-	private string ChannelFilter = string.Empty;
-	private List<FilteredItem> FilteredItems = [];
-	private List<MappingFilter> Filters = [];
+    private string ChannelFilter = string.Empty;
+    private List<FilteredItem> FilteredItems = [];
+    private List<MappingFilter> Filters = [];
 
-	private Dictionary<long, List<XMLTVItem>> ParsedGuides = new();
+    private Dictionary<long, List<XMLTVItem>> ParsedGuides = new();
 }
 <Loader IsLoading=@IsLoading>
 
-	<div class="row">
-		<div class="col-md-12">
-			@if (SelectedGuide == null)
-			{
-				@foreach (var g in Guides)
-				{
-					<Button Style="margin: 0 0 1em 1em;" Color="ButtonColor.Primary" @onclick=@(()=>GuideSelected(g))>@g.Name</Button>
-				}
-			}
-			else
-			{
-				<h4>Guide: @SelectedGuide.Name</h4>
-				@if (SelectedChannel == null)
-				{
-					<div>Filter: <InputText @bind-Value=ChannelFilter></InputText></div>
-					@if (ChannelFilter.Length > 0)
-					{
-						foreach (var c in SelectedGuide.Items.Where(i => string.IsNullOrWhiteSpace(ChannelFilter) || i.Data.Any(kv => kv.Value.ToLowerInvariant().Contains(ChannelFilter.ToLowerInvariant()))))
-						{
-							<div style="font-weight:bold;">
-								<Button @onclick=@(()=>ChannelSelected(c)) Color="ButtonColor.Primary" Size="Size.Small" Outline="true">@c.ChannelId</Button>
-								</div>
-							<div style="padding-left: 1em;">@(string.Join(',', c.Data.Select(kv => $"{kv.Key}: {kv.Value}")))</div>
-						}
-					}
-				}
-				else
-				{
-					<h4>
-						Channel:
-						<div style="font-weight:bold;">@SelectedChannel.ChannelId</div>
-						@foreach (var d in SelectedChannel.Data)
-						{
-							<div style="padding-left: 1em;">@($"{d.Key}: {d.Value}")</div>
-						}
-					</h4>
-					@if (SelectedPlaylist == null)
-					{
-						@foreach (var p in Playlists)
-						{
-							<Button Style="margin: 0 0 1em 1em;" Color="ButtonColor.Primary" @onclick=@(()=>PlaylistSelected(p))>@p.Name</Button>
-						}
-					}
-					else
-					{
-						var i = 0;
-						<Filter @ref="filter" TFilter="MappingFilter" TItem="FilteredItem" Filters="Filters" Items=FilteredItems OnApply="@((f)=>ApplyFilter(f))" OnTest="@((f)=>TestFilter(f))" OnDelete="((f)=>DeleteFilter(f))">
-							@{
-								var fi = context;
-								i++;
-							}
-							<div class="@(string.Join(" ", new [] {fi.Filtered? "filtered" : string.Empty}))">
-								@(fi?.Item?.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? fi?.Item?.Url ?? string.Empty)
-								@foreach (var data in fi?.Item?.Data?.Select(d => $"{d.Key} : {d.Value}") ?? [])
-								{
-									<div class="tabbed subtext">
-										<Button @onclick="@((e)=>TestFilter(data, FilterType.Contains, true))" Color="ButtonColor.Primary" Size="Size.Small" Outline="true">@data</Button>
-										</div>
-								}
-							</div>
-						</Filter>
-					}
-				}
-			}
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            @if (SelectedGuide == null)
+            {
+                @foreach (var g in Guides)
+                {
+                    <Button Style="margin: 0 0 1em 1em;" Color="BlazorBootstrap.ButtonColor.Primary" @onclick=@(()=>GuideSelected(g))>@g.Name</Button>
+                }
+            }
+            else
+            {
+                <h4>Guide: @SelectedGuide.Name</h4>
+                @if (SelectedChannel == null)
+                {
+                    <div>Filter: <InputText @bind-Value=ChannelFilter></InputText></div>
+                    @if (ChannelFilter.Length > 0)
+                    {
+                        foreach (var c in SelectedGuide.Items.Where(i => string.IsNullOrWhiteSpace(ChannelFilter) || i.Data.Any(kv => kv.Value.ToLowerInvariant().Contains(ChannelFilter.ToLowerInvariant()))))
+                        {
+                            <div style="font-weight:bold;">
+                                <Button @onclick=@(()=>ChannelSelected(c)) Color="BlazorBootstrap.ButtonColor.Primary" Size="Size.Small" Outline="true">@c.ChannelId</Button>
+                            </div>
+                            <div style="padding-left: 1em;">@(string.Join(',', c.Data.Select(kv => $"{kv.Key}: {kv.Value}")))</div>
+                        }
+                    }
+                }
+                else
+                {
+                    <h4>
+                        Channel:
+                        <div style="font-weight:bold;">@SelectedChannel.ChannelId</div>
+                        @foreach (var d in SelectedChannel.Data)
+                        {
+                            <div style="padding-left: 1em;">@($"{d.Key}: {d.Value}")</div>
+                        }
+                    </h4>
+                    @if (SelectedPlaylist == null)
+                    {
+                        @foreach (var p in Playlists)
+                        {
+                            <Button Style="margin: 0 0 1em 1em;" Color="BlazorBootstrap.ButtonColor.Primary" @onclick=@(()=>PlaylistSelected(p))>@p.Name</Button>
+                        }
+                    }
+                    else
+                    {
+                        var i = 0;
+                        <Filter @ref="filter" TFilter="MappingFilter" TItem="FilteredItem" Filters="Filters" Items=FilteredItems OnApply="@((f)=>ApplyFilter(f))" OnTest="@((f)=>TestFilter(f))" OnDelete="((f)=>DeleteFilter(f))">
+                            @{
+                                var fi = context;
+                                i++;
+                            }
+                            <div class="@(string.Join(" ", new [] {fi.Filtered? "filtered" : string.Empty}))">
+                                @(fi?.Item?.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? fi?.Item?.Url ?? string.Empty)
+                                @foreach (var data in fi?.Item?.Data?.Select(d => $"{d.Key} : {d.Value}") ?? [])
+                                {
+                                    <div class="tabbed subtext">
+                                        <Button @onclick="@((e)=>TestFilter(data, FilterType.Contains, true))" Color="BlazorBootstrap.ButtonColor.Primary" Size="Size.Small" Outline="true">@data</Button>
+                                    </div>
+                                }
+                            </div>
+                        </Filter>
+                    }
+                }
+            }
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<div class="float-end">
-				<Button Color="ButtonColor.Primary" @onclick=@Save Disabled=!CanSave>Save</Button>
-				<Button Color="ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
-			</div>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="float-end">
+                <Button Color="BlazorBootstrap.ButtonColor.Primary" @onclick=@Save Disabled=!CanSave>Save</Button>
+                <Button Color="BlazorBootstrap.ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
+            </div>
+        </div>
+    </div>
 </Loader>
 @code {
-	protected async Task GuideSelected(XMLTV guide)
-	{
-		await SetLoading();
-		if (!ParsedGuides.TryGetValue(guide.Id, out var items))
-		{
-			items = (await XMLTVParser.Parse(await Utility.XMLTV.Populate(Config, guide))).OrderBy(c => c.ChannelId).ToList();
-			ParsedGuides[guide.Id] = items;
-		}
-		guide.Items = items;
-		SelectedGuide = guide;
-		if (MappingId > 0)
-		{
-			var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
-			var channel = SelectedGuide.Items.Where(i => i.ChannelId == mapping?.XMLTVItem?.ChannelId).FirstOrDefault();
-			if (channel != null)
-			{
-				await ChannelSelected(channel);
-			}
-		}
-		await SetLoaded();
-	}
-	protected async Task ChannelSelected(XMLTVItem channel)
-	{
-		await SetLoading();
-		SelectedChannel = channel;
-		var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
-		if (mapping?.M3UId > 0)
-		{
-			await PlaylistSelected(mapping.M3U);
-		}
-		CanSave = true;
-		await SetLoaded();
-	}
-	protected async Task PlaylistSelected(M3U playlist)
-	{
-		await SetLoading();
-		SelectedPlaylist = playlist;
-		SelectedItems = (await Utility.M3U.Populate(Config, playlist)).Items.OrderBy(i => i.Url).ToList();
+    protected async Task GuideSelected(XMLTV guide)
+    {
+        await SetLoading();
+        if (!ParsedGuides.TryGetValue(guide.Id, out var items))
+        {
+            items = (await XMLTVParser.Parse(await Utility.XMLTV.Populate(Config, guide))).OrderBy(c => c.ChannelId).ToList();
+            ParsedGuides[guide.Id] = items;
+        }
+        guide.Items = items;
+        SelectedGuide = guide;
+        if (MappingId > 0)
+        {
+            var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
+            var channel = SelectedGuide.Items.Where(i => i.ChannelId == mapping?.XMLTVItem?.ChannelId).FirstOrDefault();
+            if (channel != null)
+            {
+                await ChannelSelected(channel);
+            }
+        }
+        await SetLoaded();
+    }
+    protected async Task ChannelSelected(XMLTVItem channel)
+    {
+        await SetLoading();
+        SelectedChannel = channel;
+        var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
+        if (mapping?.M3UId > 0)
+        {
+            await PlaylistSelected(mapping.M3U);
+        }
+        CanSave = true;
+        await SetLoaded();
+    }
+    protected async Task PlaylistSelected(M3U playlist)
+    {
+        await SetLoading();
+        SelectedPlaylist = playlist;
+        SelectedItems = (await Utility.M3U.Populate(Config, playlist)).Items.OrderBy(i => i.Url).ToList();
 
-		var items = SelectedItems;
-		var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
+        var items = SelectedItems;
+        var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
 
-		if (mapping?.Filters.Count > 0)
-		{
-			items = await FilterHelper.DoFilter(items, mapping.Filters);
-			Filters = mapping.Filters;
-		}
-		else if (SelectedChannel != null)
-		{
-			var values = SelectedChannel.Data.Select(kv => kv.Value).Where(v => !string.IsNullOrWhiteSpace(v));
-			var matches = values.Select(v => System.Text.RegularExpressions.Regex.Matches(v, "\\b[a-z0-9]+\\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Where(m => m.Success).Select(m => m.Value));
-			var tokens = matches.SelectMany(t => t);
+        if (mapping?.Filters.Count > 0)
+        {
+            items = await FilterHelper.DoFilter(items, mapping.Filters);
+            Filters = mapping.Filters;
+        }
+        else if (SelectedChannel != null)
+        {
+            {
+                var filter = new MappingFilter
+                    {
+                        FilterContent = $"tvg-id : {SelectedChannel.ChannelId}",
+                        Invert = true,
+                        FilterType = FilterType.Contains
+                    };
+                var filtered = await Library.FilterHelper.DoFilter(items, filter);
+                if (filtered.Count > 0 && items.Count != filtered.Count)
+                {
+                    Filters.Add(filter);
+                    items = filtered;
+                }
+            }
+            var values = SelectedChannel.Data.Select(kv => kv.Value).Where(v => !string.IsNullOrWhiteSpace(v));
+            var matches = values.Select(v => System.Text.RegularExpressions.Regex.Matches(v, "\\b[a-z0-9]+\\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Where(m => m.Success).Select(m => m.Value));
+            var tokens = matches.SelectMany(t => t);
 
-			foreach (var token in tokens.OrderByDescending(t => t.Length))
-			{
-				var filter = new MappingFilter { FilterType = Database.Enums.FilterType.Contains, FilterContent = token, Invert = true };
-				var filtered = await Library.FilterHelper.DoFilter(items, filter);
-				if (filtered.Count == 0)
-				{
-					break;
-				}
-				else
-				{
-					if (items.Count != filtered.Count)
-					{
-						Filters.Add(filter);
-						items = filtered;
-					}
-				}
-			}
-		}
-		FilteredItems = items.Select(c => new FilteredItem { Filtered = false, Item = c }).ToList();
+            foreach (var token in tokens.OrderByDescending(t => t.Length))
+            {
+                var filter = new MappingFilter { FilterType = Database.Enums.FilterType.Contains, FilterContent = token, Invert = true };
+                var filtered = await Library.FilterHelper.DoFilter(items, filter);
+                if (filtered.Count == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    if (items.Count != filtered.Count)
+                    {
+                        Filters.Add(filter);
+                        items = filtered;
+                    }
+                }
+            }
+        }
+        FilteredItems = items.Select(c => new FilteredItem { Filtered = false, Item = c }).ToList();
 
-		await SetLoaded();
-	}
-	protected async Task TestFilter(MappingFilter filter)
-	{
-		await SetLoading();
-		var filtered = await Library.FilterHelper.DoFilter(FilteredItems, filter);
-		await FilteredItems.Except(filtered).ParallelForEachAsync(i => i.Filtered = true);
-		await filtered.ParallelForEachAsync(i => i.Filtered = false);
-		FilteredItems = FilteredItems.OrderBy(fi => fi.Filtered).ThenBy(fi => fi.Item.Url).ToList();
-		await SetLoaded();
-	}
-	protected async Task ApplyFilter(MappingFilter filter)
-	{
-		await SetLoading();
-		Filters.Add(filter);
-		FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
-		await SetLoaded();
-	}
-	protected async Task DeleteFilter(MappingFilter filter)
-	{
-		await SetLoading();
-		if (filter.Id > 0)
-		{
-			DB.Attach(filter);
-			DB.Remove(filter);
-		}
-		Filters.Remove(filter);
-		FilteredItems = (await Library.FilterHelper.DoFilter(SelectedItems, Filters)).Select(m => new FilteredItem { Filtered = false, Item = m }).ToList();
-		await SetLoaded();
-	}
+        await SetLoaded();
+    }
+    protected async Task TestFilter(MappingFilter filter)
+    {
+        await SetLoading();
+        var filtered = await Library.FilterHelper.DoFilter(FilteredItems, filter);
+        await FilteredItems.Except(filtered).ParallelForEachAsync(i => i.Filtered = true);
+        await filtered.ParallelForEachAsync(i => i.Filtered = false);
+        FilteredItems = FilteredItems.OrderBy(fi => fi.Filtered).ThenBy(fi => fi.Item.Url).ToList();
+        await SetLoaded();
+    }
+    protected async Task ApplyFilter(MappingFilter filter)
+    {
+        await SetLoading();
+        Filters.Add(filter);
+        FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
+        await SetLoaded();
+    }
+    protected async Task DeleteFilter(MappingFilter filter)
+    {
+        await SetLoading();
+        if (filter.Id > 0)
+        {
+            DB.Attach(filter);
+            DB.Remove(filter);
+        }
+        Filters.Remove(filter);
+        FilteredItems = (await Library.FilterHelper.DoFilter(SelectedItems, Filters)).Select(m => new FilteredItem { Filtered = false, Item = m }).ToList();
+        await SetLoaded();
+    }
 
-	public override async Task Load()
-	{
-		await SetLoading();
-		CanSave = false;
+    public override async Task Load()
+    {
+        await SetLoading();
+        CanSave = false;
 
-		DB.ChangeTracker.Clear();
+        DB.ChangeTracker.Clear();
 
-		Filters = [];
-		SelectedGuide = null;
-		SelectedChannel = null;
-		SelectedItems = null;
-		SelectedPlaylist = null;
-		if (MappingId > 0)
-		{
-			var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
-			if (mapping?.XMLTVItem != null)
-			{
-				await GuideSelected(mapping.XMLTVItem?.XMLTV);
-			}
-			ChannelFilter = mapping.Name;
-		}
-		Guides = await DB.XMLTV.OrderBy(g => g.Created).AsNoTracking().ToListAsync();
-		Playlists = await DB.M3U.OrderBy(p => p.Created).AsNoTracking().ToListAsync();
-		await SetLoaded();
-	}
-	public override async Task Save()
-	{
-		await SetLoading();
-		var mapping = await DB.Mapping.FirstOrDefaultAsync(m => m.Id == MappingId) ?? new();
-		var channel = await DB.XMLTVItem.FirstOrDefaultAsync(c => c.ChannelId == SelectedChannel.ChannelId);
-		if (channel != null)
-		{
-			mapping.XMLTVItemId = channel.Id;
-			mapping.M3UId = SelectedPlaylist.Id;
-			mapping.Filters = Filters;
-			mapping.Name = !string.IsNullOrWhiteSpace(mapping.Name) ? mapping.Name : SelectedChannel.Data.Where(d => d.Key == "display-name").OrderByDescending(d => d.Key.Length)?.FirstOrDefault()?.Value ?? SelectedChannel.ChannelId;
+        Filters = [];
+        SelectedGuide = null;
+        SelectedChannel = null;
+        SelectedItems = null;
+        SelectedPlaylist = null;
+        if (MappingId > 0)
+        {
+            var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
+            if (mapping?.XMLTVItem != null)
+            {
+                await GuideSelected(mapping.XMLTVItem?.XMLTV);
+            }
+            ChannelFilter = mapping.Name;
+        }
+        Guides = await DB.XMLTV.OrderBy(g => g.Created).AsNoTracking().ToListAsync();
+        Playlists = await DB.M3U.OrderBy(p => p.Created).AsNoTracking().ToListAsync();
+        await SetLoaded();
+    }
+    public override async Task Save()
+    {
+        await SetLoading();
+        var mapping = await DB.Mapping.FirstOrDefaultAsync(m => m.Id == MappingId) ?? new();
+        var channel = await DB.XMLTVItem.FirstOrDefaultAsync(c => c.ChannelId == SelectedChannel.ChannelId);
+        if (channel != null)
+        {
+            mapping.XMLTVItemId = channel.Id;
+            mapping.M3UId = SelectedPlaylist.Id;
+            mapping.Filters = Filters;
+            mapping.Name = !string.IsNullOrWhiteSpace(mapping.Name) ? mapping.Name : SelectedChannel.Data.Where(d => d.Key == "display-name").OrderByDescending(d => d.Key.Length)?.FirstOrDefault()?.Value ?? SelectedChannel.ChannelId;
 
-			if (mapping.Id == 0)
-			{
-				await DB.Mapping.AddAsync(mapping);
-			}
-			await DB.SaveChangesAsync();
-		}
+            if (mapping.Id == 0)
+            {
+                await DB.Mapping.AddAsync(mapping);
+            }
+            await DB.SaveChangesAsync();
+        }
 
-		SelectedChannel = null;
-		CanSave = false;
-		Filters = [];
+        SelectedChannel = null;
+        CanSave = false;
+        Filters = [];
 
-		await OnSave.InvokeAsync(new ModalEventArgs<Mapping>(mapping));
-		await SetLoaded();
-	}
-	public override async Task Cancel()
-	{
-		await OnCancel.InvokeAsync();
-	}
+        await OnSave.InvokeAsync(new ModalEventArgs<Mapping>(mapping));
+        await SetLoaded();
+    }
+    public override async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
 
-	public async Task TestFilter(string content, FilterType type, bool inverted)
-	{
-		filter.SetFilterText(content);
-		filter.SetFilterType(type);
-		filter.SetInverted(inverted);
-		await TestFilter(new MappingFilter { FilterContent = content, FilterType = type, Invert = inverted });
-	}
+    public async Task TestFilter(string content, FilterType type, bool inverted)
+    {
+        filter.SetFilterText(content);
+        filter.SetFilterType(type);
+        filter.SetInverted(inverted);
+        await TestFilter(new MappingFilter { FilterContent = content, FilterType = type, Invert = inverted });
+    }
 }

@@ -1,0 +1,55 @@
+﻿@attribute [StreamRendering]
+@typeparam TItem where TItem : notnull
+@code {
+    [Parameter] public ButtonOutlineColor? OutlineColor { get; set; }
+    [Parameter] public ButtonColor? Color { get; set; }
+    [Parameter] public bool Disabled { get; set; } = false;
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public TItem? SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem> SelectedItemChanged { get; set; }
+
+    [Parameter] public Dictionary<TItem, string>? Values { get; set; }
+
+
+    private bool Open { get; set; }
+}
+
+
+@if (Values?.TryGetValue(SelectedItem ?? Values.First().Key, out var selectedValue) ?? false)
+{
+    <button class="btn @Color?.AsString(EnumFormat.Description) @OutlineColor?.AsString(EnumFormat.Description) dropdown-toggle @Class @(Open ? " show" : string.Empty)"
+            style="width: calc(@((Values.Values.Select(v=>v.Length).Max()+1).ToString())ch + 2em);"
+            disabled=@Disabled @onclick=@(()=>Open = !Open)
+            type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <div class="w-100" style="display:inline-block; text-align:left; margin-right:-2ch;">
+            @selectedValue
+        </div>
+    </button>
+    @if (Values?.Any() ?? false)
+    {
+        <div class="dropdown-menu @(Open ? " show" : string.Empty)">
+            @foreach (var item in Values)
+            {
+                <a class="dropdown-item" @onclick=@(()=>Select(item))>@item.Value</a>
+            }
+        </div>
+    }
+}
+else
+{
+    <h1>Do Better</h1>
+}
+@code {
+    public async Task Select(KeyValuePair<TItem, string> item)
+    {
+        SelectedItem = item.Key;
+        await SelectedItemChanged.InvokeAsync(item.Key);
+        await Toggle(false);
+    }
+    public Task Toggle(bool? to = null)
+    {
+        Open = to ?? !Open;
+        return Task.CompletedTask;
+    }
+}

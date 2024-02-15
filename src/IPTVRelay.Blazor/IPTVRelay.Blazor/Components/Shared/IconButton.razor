@@ -4,31 +4,11 @@
 
 @code {
 
-    public enum ButtonColor
-    {
-        [Description("btn-primary")]
-        Primary,
-        [Description("btn-secondary")]
-        Secondary,
-        [Description("btn-success")]
-        Success,
-        [Description("btn-danger")]
-        Danger,
-        [Description("btn-warning")]
-        Warning,
-        [Description("btn-info")]
-        Info,
-        [Description("btn-light")]
-        Light,
-        [Description("btn-dark")]
-        Dark,
-    }
-
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public ButtonColor Color { get; set; } = ButtonColor.Primary;
 }
 
-<button type="button" class=@($"form-control btn {Color.AsString(EnumFormat.Description)} btn-icon")
+<button type="button" class=@($"form-control btn {Color.AsString(EnumFormat.Description)} btn-icon @Class")
         disabled=@Disabled @onclick=@((e)=>OnClick.InvokeAsync())>
     @if (ChildContent != null)
     {

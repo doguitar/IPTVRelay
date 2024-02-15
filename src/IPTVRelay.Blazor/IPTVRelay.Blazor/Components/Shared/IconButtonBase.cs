@@ -7,5 +7,6 @@ namespace IPTVRelay.Blazor.Components.Shared
     {
         [Parameter] public bool Disabled { get; set; } = false;
         [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+        [Parameter] public string? Class { get; set; }
     }
 }
