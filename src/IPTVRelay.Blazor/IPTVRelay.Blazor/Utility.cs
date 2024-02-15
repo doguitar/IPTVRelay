@@ -125,10 +125,10 @@ namespace IPTVRelay.Blazor
 								{
 									Url = playlistItem.Url,
 									Data = [
-										new M3UItemData { Key = "tvg-id", Value = m.Id.ToString() },
+										new M3UItemData { Key = "tvg-id", Value = previous.ToString() },
 										new M3UItemData { Key = "tvg-name", Value = m.Name },
 										new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
-										new M3UItemData { Key = "tvg-chno", Value = m.Channel.ToString() },
+										new M3UItemData { Key = "tvg-chno", Value = previous.ToString() },
 										new M3UItemData { Key = "TrackTitle", Value = m.Name }
 									]
 								});
@@ -300,12 +300,12 @@ namespace IPTVRelay.Blazor
 							var programmesNodes = doc.SelectNodes($"/tv/programme[@channel=\"{m.XMLTVItem.ChannelId}\"]");
 
 
-							channelNode.SetAttribute("id", m.Id.ToString());
+							channelNode.SetAttribute("id", previous.ToString());
 
 							channelsXml.Add(channelNode.OuterXml);
 							programmingXml.AddRange(programmesNodes.Cast<XmlElement>().Select(n =>
 							{
-								n.SetAttribute("channel", m.Id.ToString());
+								n.SetAttribute("channel", previous.ToString());
 								return n.OuterXml;
 							}));
 
