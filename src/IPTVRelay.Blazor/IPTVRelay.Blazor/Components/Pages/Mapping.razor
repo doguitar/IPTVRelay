@@ -7,25 +7,25 @@
 
 @code {
 
-    protected class FilteredItem
-    {
-        public M3UItem? Item;
-        public bool Filtered;
-    }
+	protected class FilteredItem
+	{
+		public M3UItem? Item;
+		public bool Filtered;
+	}
 
-    private List<Database.Models.Mapping>? Mappings { get; set; }
+	private List<Database.Models.Mapping>? Mappings { get; set; }
 
-    private Modal modal = default!;
+	private Modal modal = default!;
 
-    private XMLTV? SelectedGuide;
-    private XMLTVItem? SelectedChannel;
-    private Database.Models.Mapping? Current;
+	private XMLTV? SelectedGuide;
+	private XMLTVItem? SelectedChannel;
+	private Database.Models.Mapping? Current;
 
-    private M3U? SelectedPlaylist;
+	private M3U? SelectedPlaylist;
 
-    private List<FilteredItem> FilteredItems = [];
+	private List<FilteredItem> FilteredItems = [];
 
-    private List<MappingFilter> Filters = [];
+	private List<MappingFilter> Filters = [];
 }
 
 <PageTitle>Mapping</PageTitle>
@@ -33,76 +33,86 @@
 <h1>Mapping</h1>
 
 <Loader IsLoading=@(IsLoading && Mappings != null)>
-    <Table TItem=Database.Models.Mapping Items=Mappings Class="nowrap">
-        <HeaderColumns>
-            <th>Target Channel</th>
-            <th>Channel Name</th>
-            <th class="fill">Channel Id</th>
-        </HeaderColumns>
-        <HeaderButtons>
-            <AddButton OnClick=Add></AddButton>
-        </HeaderButtons>
-        <RowColumns>
-            <td>@context.Channel</td>
-            <td>@context.Name</td>
-            <td>@context.XMLTVItem?.ChannelId</td>
-        </RowColumns>
-        <RowButtons>
-            <EditButton OnClick=@(()=>Edit(context.Id))></EditButton>
-            <DeleteButton OnClick=@(()=>Delete(context.Id))></DeleteButton>
-        </RowButtons>
-    </Table>
+	<Table TItem=Database.Models.Mapping Items=Mappings Class="nowrap">
+		<HeaderColumns>
+			<th>Target Channel</th>
+			<th>Channel Name</th>
+			<th class="fill">Channel Id</th>
+		</HeaderColumns>
+		<HeaderButtons>
+			<AddButton OnClick=Add></AddButton>
+		</HeaderButtons>
+		<RowColumns>
+			<td>@context.Channel</td>
+			<td>@context.Name</td>
+			<td>@context.XMLTVItem?.ChannelId</td>
+		</RowColumns>
+		<RowButtons>
+			<EditButton OnClick=@(()=>Edit(context.Id))></EditButton>
+			<DeleteButton OnClick=@(()=>Delete(context.Id))></DeleteButton>
+		</RowButtons>
+	</Table>
 </Loader>
 <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" HeaderCssClass="hidden" />
 @code {
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await base.OnAfterRenderAsync(firstRender);
-        if (firstRender)
-        {
-            await Load();
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-    protected async Task Load()
-    {
-        await SetLoading();
-        Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
-        await SetLoaded();
-    }
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		await base.OnAfterRenderAsync(firstRender);
+		if (firstRender)
+		{
+			await Load();
+			await InvokeAsync(StateHasChanged);
+		}
+	}
+	protected async Task Load()
+	{
+		await SetLoading();
+		Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
+		await SetLoaded();
+	}
 
-    protected async Task Edit(long id)
-    {
-        await modal.ShowAsync<AddMappingModal>("Edit Mapping",
-            parameters: new Dictionary<string, object> {
-            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Edited) },
-            { nameof(AddMappingModal.MappingId), id }});
+	protected async Task Edit(long id)
+	{
+		await modal.ShowAsync<AddMappingModal>("Edit Mapping",
+			parameters: new Dictionary<string, object> {
+			{ nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Edited) },
+			{ nameof(AddMappingModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
+			{ nameof(AddMappingModal.MappingId), id }});
 
-    }
-    protected async Task Delete(long id)
-    {
-        var mapping = await DB.Mapping.Include(m => m.Filters).Where(m => m.Id == id).FirstOrDefaultAsync();
-        if (mapping != null)
-        {
-            DB.Remove(mapping);
-            Mappings.Remove(mapping);
-            await DB.SaveChangesAsync();
-        }
-    }
-    protected async Task Add()
-    {
-        await modal.ShowAsync<AddMappingModal>("Add Mapping",
-            parameters: new Dictionary<string, object> {
-            { nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Added) },
-            { nameof(AddMappingModal.MappingId), 0L }});
+	}
+	protected async Task Delete(long id)
+	{
+		var mapping = await DB.Mapping.Include(m => m.Filters).Where(m => m.Id == id).FirstOrDefaultAsync();
+		if (mapping != null)
+		{
+			DB.Remove(mapping);
+			Mappings.Remove(mapping);
+			await DB.SaveChangesAsync();
+		}
+	}
+	protected async Task Add()
+	{
+		await modal.ShowAsync<AddMappingModal>("Add Mapping",
+			parameters: new Dictionary<string, object> {
+			{ nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Added) },
+			{ nameof(AddMappingModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
+			{ nameof(AddMappingModal.MappingId), 0L }});
 
-    }
-    public async Task Edited(ModalEventArgs<Database.Models.Mapping> model)
-    {
-        await Load();
-    }
-    public async Task Added(ModalEventArgs<Database.Models.Mapping> model)
-    {
-        await Load();
-    }
+	}
+	public async Task Edited(ModalEventArgs<Database.Models.Mapping> args)
+	{
+		await SetLoading();
+		await modal.HideAsync();
+		DB.Attach(args.Model);
+		await DB.SaveChangesAsync();
+		await Load();
+	}
+	public async Task Added(ModalEventArgs<Database.Models.Mapping> args)
+	{
+		await SetLoading();
+		await modal.HideAsync();
+		await DB.AddAsync(args.Model);
+		await DB.SaveChangesAsync();
+		await Load();
+	}
 }
