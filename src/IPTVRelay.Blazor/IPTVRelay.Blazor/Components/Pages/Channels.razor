@@ -3,6 +3,9 @@
 @using Components.Modals;
 @attribute [StreamRendering]
 
+@using Hangfire
+@inject IRecurringJobManager RecurringJobManager
+
 @rendermode InteractiveServer
 
 @code {
@@ -125,10 +128,9 @@
     }
     protected async Task Generate()
     {
-        await Save(false);
         await SetLoading();
-        await Utility.M3U.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
-        await Utility.XMLTV.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
+        await Save(false);
+        RecurringJobManager.Trigger("UPDATE");
         await Load();
     }
 }
