@@ -3,7 +3,7 @@
 
 @code {
 
-    private TFilter Current = new();
+    private TFilter Current = new() { Invert = true, FilterType = Database.Enums.FilterType.Contains };
 
     [Parameter] public List<TItem> Items { get; set; } = [];
     [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
@@ -34,7 +34,7 @@
                     <InputText class="form-control" @bind-Value="Current.FilterContent"></InputText>
                     <div class="input-group-append">
                         <div class="input-group-text">
-                            <input type="checkbox" aria-label="">
+                            <input type="checkbox" aria-label="" @bind-value="Current.Invert">
                         </div>
                         <EyeButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Test"></EyeButton>
                         <AddButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Apply"></AddButton>
