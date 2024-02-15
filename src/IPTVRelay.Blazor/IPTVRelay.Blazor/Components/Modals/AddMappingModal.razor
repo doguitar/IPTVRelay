@@ -141,7 +141,7 @@
 		await SetLoading();
 		SelectedChannel = channel;
 		var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
-		if (mapping.M3UId > 0)
+		if (mapping?.M3UId > 0)
 		{
 			await PlaylistSelected(mapping.M3U);
 		}
@@ -226,6 +226,7 @@
 
 		DB.ChangeTracker.Clear();
 
+		Filters = [];
 		SelectedGuide = null;
 		SelectedChannel = null;
 		SelectedItems = null;
@@ -265,7 +266,6 @@
 		SelectedChannel = null;
 		CanSave = false;
 		Filters = [];
-		await PlaylistSelected(SelectedPlaylist);
 
 		await OnSave.InvokeAsync(new ModalEventArgs<Mapping>(mapping));
 		await SetLoaded();

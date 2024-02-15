@@ -103,16 +103,12 @@
 	{
 		await SetLoading();
 		await modal.HideAsync();
-		DB.Attach(args.Model);
-		await DB.SaveChangesAsync();
 		await Load();
 	}
 	public async Task Added(ModalEventArgs<Database.Models.Mapping> args)
 	{
 		await SetLoading();
 		await modal.HideAsync();
-		await DB.AddAsync(args.Model);
-		await DB.SaveChangesAsync();
 		await Load();
 	}
 }
