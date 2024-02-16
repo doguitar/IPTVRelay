@@ -340,18 +340,6 @@ namespace IPTVRelay.Blazor
                     DB = db;
                 }
 
-                private async Task CreateOutput()
-                {
-                    var mappings = await DB.Mapping
-                        .Include(m => m.XMLTVItem)
-                        .Include(m => m.M3U)
-                        .Include(m => m.Filters)
-                        .OrderBy(m => m.Channel).ThenBy(m => m.Name)
-                        .AsNoTracking().ToListAsync();
-
-                    await M3U.Generate(Config, mappings);
-                    await XMLTV.Generate(Config, mappings);
-                }
                 public async Task Update()
                 {
                     {
@@ -391,15 +379,12 @@ namespace IPTVRelay.Blazor
                     }
                     DB.ChangeTracker.Clear();
                     {
-                        var mappings = (await DB.Mapping
-                                .Include(m => m.XMLTVItem)
-                                .Include(m => m.M3U)
-                                .Include(m => m.Filters)
-                                .OrderBy(m => m.Channel).ThenBy(m => m.Name)
-                                .ToListAsync())
-                                .GroupBy(m => m.Channel)
-                                .Select(g => g.First())
-                                .ToList();
+                        var mappings = await DB.Mapping
+                            .Include(m => m.XMLTVItem)
+                            .Include(m => m.M3U)
+                            .Include(m => m.Filters)
+                            .OrderBy(m => m.Channel).ThenBy(m => m.Name)
+                            .AsNoTracking().ToListAsync();
 
                         await M3U.Generate(Config, mappings);
                         await XMLTV.Generate(Config, mappings);
