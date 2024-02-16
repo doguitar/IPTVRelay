@@ -361,6 +361,7 @@ namespace IPTVRelay.Blazor
 
                         await DB.SaveChangesAsync();
                     }
+                    DB.ChangeTracker.Clear();
                     {
                         var guides = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).ToListAsync();
                         foreach (var guide in guides)
@@ -379,15 +380,32 @@ namespace IPTVRelay.Blazor
                             if (removed.Any() || added.Any())
                             {
                                 guide.Items.RemoveAll(i => removed.Any(r => r.ChannelId == i.ChannelId));
-                                DB.RemoveRange(removed);    
+                                DB.RemoveRange(removed);
                                 guide.Items.AddRange(added);
-                                added.ForEach(a=>a.XMLTVId = guide.Id);
+                                added.ForEach(a => a.XMLTVId = guide.Id);
                                 await DB.SaveChangesAsync();
                             }
 
                             await XMLTV.WriteToDisk(Config, guide, content);
                         }
                     }
+                    DB.ChangeTracker.Clear();
+                    {
+                        var mappings = (await DB.Mapping
+                                .Include(m => m.XMLTVItem)
+                                .Include(m => m.M3U)
+                                .Include(m => m.Filters)
+                                .OrderBy(m => m.Channel).ThenBy(m => m.Name)
+                                .ToListAsync())
+                                .GroupBy(m => m.Channel)
+                                .Select(g => g.First())
+                                .ToList();
+
+                        await M3U.Generate(Config, mappings);
+                        await XMLTV.Generate(Config, mappings);
+                    }
+                    DB.ChangeTracker.Clear();
+
                 }
                 private async Task PopulateM3URecursive(Database.Models.M3U playlist, List<Database.Models.M3U> playlists)
                 {
