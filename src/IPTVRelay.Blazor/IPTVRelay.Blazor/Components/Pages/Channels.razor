@@ -65,7 +65,7 @@
 							@(context.ActualChannel)
 						</div>
 					</td>
-					<td class="name fill">
+					<td class="category">
 						<input id="@($"mapping{context.Index}")" type="text" class="form-control" tabindex="@(context.Index+20000)" 
 							@bind-Value:event="oninput" @bind-Value="@context.Mapping.Category" @onkeydown="@((args)=>CategoryKeyDown(args, context))" />
 					</td>
