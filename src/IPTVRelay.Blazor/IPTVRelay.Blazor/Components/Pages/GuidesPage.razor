@@ -67,9 +67,9 @@
 
     protected async Task Add()
     {
-        await modal.ShowAsync<AddGuideModal>("Add Guide",
+        await modal.ShowAsync<GuideModal>("Add Guide",
             parameters: new Dictionary<string, object> {
-                { nameof(AddGuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) } });
+                { nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) } });
     }
     protected async Task Delete(long guideId)
     {
@@ -85,10 +85,10 @@
         var guide = await DB.XMLTV.FirstOrDefaultAsync(p => p.Id == guideId);
         if (guide != null)
         {
-            await modal.ShowAsync<AddGuideModal>("Edit Playlist",
+            await modal.ShowAsync<GuideModal>("Edit Playlist",
                 parameters: new Dictionary<string, object> {
-                    { nameof(AddGuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
-                    { nameof(AddGuideModal.ModelId), guide.Id }});
+                    { nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
+                    { nameof(GuideModal.ModelId), guide.Id }});
         }
     }
     public async Task Added(XMLTVEventArgs args)

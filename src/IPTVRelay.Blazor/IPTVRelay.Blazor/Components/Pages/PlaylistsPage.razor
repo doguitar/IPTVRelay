@@ -68,10 +68,10 @@
 
     protected async Task Add()
     {
-        await modal.ShowAsync<AddPlaylistModal>("Add Playlist",
+        await modal.ShowAsync<PlaylistModal>("Add Playlist",
         parameters: new Dictionary<string, object> {
-            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Added) },
-            { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) }});
+            { nameof(PlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Added) },
+            { nameof(PlaylistModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) }});
     }
     protected async Task Child(long playlistId, string name)
     {
@@ -82,11 +82,11 @@
 
         if (playlist != null)
         {
-            await modal.ShowAsync<AddPlaylistModal>("Add Playlist",
+            await modal.ShowAsync<PlaylistModal>("Add Playlist",
             parameters: new Dictionary<string, object> {
-            { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Edited) },
-            { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
-            { nameof(AddPlaylistModal.ModelId), playlist.Id }});
+            { nameof(PlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Edited) },
+            { nameof(PlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
+            { nameof(PlaylistModal.ModelId), playlist.Id }});
         }
 
 
@@ -103,11 +103,11 @@
         var playlist = await DB.M3U.FirstOrDefaultAsync(p => p.Id == playlistId);
         if (playlist != null)
         {
-            await modal.ShowAsync<AddPlaylistModal>("Edit Playlist",
+            await modal.ShowAsync<PlaylistModal>("Edit Playlist",
                 parameters: new Dictionary<string, object> {
-                { nameof(AddPlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Edited) },
-                { nameof(AddPlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
-                { nameof(AddPlaylistModal.ModelId), playlist.Id }});
+                { nameof(PlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Edited) },
+                { nameof(PlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
+                { nameof(PlaylistModal.ModelId), playlist.Id }});
 
         }
     }

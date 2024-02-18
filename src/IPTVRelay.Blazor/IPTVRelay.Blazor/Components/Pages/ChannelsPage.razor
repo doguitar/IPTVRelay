@@ -23,9 +23,9 @@
 			get => Mapping.Channel.ToString();
 			set
 			{
-				if (long.TryParse(value, out var parsed))
+				if (ulong.TryParse(value, out var parsed) && parsed < long.MaxValue)
 				{
-					Mapping.Channel = parsed;
+					Mapping.Channel = (long)parsed;
 				}
 			}
 		}
@@ -57,8 +57,9 @@
 				</HeaderButtons>
 				<RowColumns>
 					<td class="targetChannel align-middle">
-						<NumberInput tabindex="@(context.Index + 10000)" TValue="long" EnableMinMax=true Min="1" Max="99999"
-									 @bind-Value:event="oninput" @bind-Value=@context.Mapping.Channel @onblur="((a) => Recalculate())"></NumberInput>
+						<input id="@($"channel{context.Index}")" type="text" class="form-control" tabindex="@(context.Index+10000)"
+							   @bind-Value:event="oninput" @bind-Value="@context.ChannelString" 
+							   @onkeydown="@((args)=>ChannelKeyDown(args, context))" />
 					</td>
 					<td class="actualChannel align-middle">
 						<div>
@@ -66,8 +67,8 @@
 						</div>
 					</td>
 					<td class="category">
-						<input id="@($"mapping{context.Index}")" type="text" class="form-control" tabindex="@(context.Index+20000)" 
-							@bind-Value:event="oninput" @bind-Value="@context.Mapping.Category" @onkeydown="@((args)=>CategoryKeyDown(args, context))" />
+						<input id="@($"category{context.Index}")" type="text" class="form-control" tabindex="@(context.Index+20000)"
+							   @bind-Value:event="oninput" @bind-Value="@context.Mapping.Category" @onkeydown="@((args)=>CategoryKeyDown(args, context))" />
 					</td>
 					<td class="name fill" colspan="2">
 						<InputText class="form-control" tabindex="@(context.Index+30000)" @bind-Value=@context.Mapping.Name></InputText>
@@ -95,7 +96,32 @@
 			{
 				target.Mapping.Category = view.Mapping.Category;
 				await InvokeAsync(StateHasChanged);
-				await JS.InvokeVoidAsync("setFocus", $"mapping{target.Index}");
+				await JS.InvokeVoidAsync("setFocus", $"category{target.Index}");
+				return true;
+			}
+		}
+		return true;
+	}
+	protected async Task<bool> ChannelKeyDown(KeyboardEventArgs args, MappingView view)
+	{
+		if (args.ShiftKey)
+		{
+			MappingView target = null;
+			if (args.Code == "ArrowDown" && view.Index < Mappings.LongCount() - 1L)
+			{
+				target = Mappings[(int)view.Index + 1];
+			}
+			else if (args.Code == "ArrowUp" && view.Index > 0)
+			{
+				target = Mappings[(int)view.Index - 1];
+			}
+			if (target != null)
+			{
+				target.Mapping.Channel = view.Mapping.Channel;
+				await InvokeAsync(StateHasChanged);
+				await JS.InvokeVoidAsync("setFocus", $"channel{target.Index}");
+				Recalculate();
+				return true;
 			}
 		}
 		return true;
@@ -151,17 +177,17 @@
 		}
 	}
 
-    protected async Task Save(bool load = true)
-    {
-        await SetLoading();
-        await DB.SaveChangesAsync();
-        if (load) await Load();
-    }
-    protected async Task Generate()
-    {
-        await SetLoading();
-        await Save(false);
-        RecurringJobManager.Trigger("UPDATE");
-        await Load();
-    }
+	protected async Task Save(bool load = true)
+	{
+		await SetLoading();
+		await DB.SaveChangesAsync();
+		if (load) await Load();
+	}
+	protected async Task Generate()
+	{
+		await SetLoading();
+		await Save(false);
+		RecurringJobManager.Trigger("UPDATE");
+		await Load();
+	}
 }
