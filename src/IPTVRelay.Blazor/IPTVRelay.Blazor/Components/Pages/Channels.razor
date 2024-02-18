@@ -3,6 +3,9 @@
 @using Components.Modals;
 @attribute [StreamRendering]
 
+@using Hangfire
+@inject IRecurringJobManager RecurringJobManager
+
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -148,18 +151,17 @@
 		}
 	}
 
-	protected async Task Save(bool load = true)
-	{
-		await SetLoading();
-		await DB.SaveChangesAsync();
-		if (load) await Load();
-	}
-	protected async Task Generate()
-	{
-		await Save(false);
-		await SetLoading();
-		await Utility.M3U.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
-		await Utility.XMLTV.Generate(Config, Mappings.Select(m => m.Mapping).ToList());
-		await Load();
-	}
+    protected async Task Save(bool load = true)
+    {
+        await SetLoading();
+        await DB.SaveChangesAsync();
+        if (load) await Load();
+    }
+    protected async Task Generate()
+    {
+        await SetLoading();
+        await Save(false);
+        RecurringJobManager.Trigger("UPDATE");
+        await Load();
+    }
 }

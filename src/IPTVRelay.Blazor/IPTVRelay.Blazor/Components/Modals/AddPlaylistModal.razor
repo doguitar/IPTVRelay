@@ -27,7 +27,7 @@
                 <div class="input-group mb-3">
                     <InputText disabled="@(Model.ParentId > 0)" class="form-control" placeholder="M3U Location" aria-label="M3U Location" aria-describedby="basic-addon2" @bind-Value=Model.Uri></InputText>
                     <div class="input-group-append">
-                        <Button Color="ButtonColor.Primary" @onclick=GetUri>Load</Button>
+                        <Button Color="BlazorBootstrap.ButtonColor.Primary" @onclick=GetUri>Load</Button>
                     </div>
                     <div class="input-group-append">
                         <span class="input-group-text" id="basic-addon2">@(FilteredItems?.LongCount().ToString() ?? string.Empty)</span>
@@ -49,9 +49,9 @@
     <div class="row">
         <div class="col-md-12">
             <div class="float-end">
-                <Button Color="ButtonColor.Info" @onclick=@((a) => {preview = !preview;})>Preview</Button>
-                <Button Color="ButtonColor.Primary" @onclick=@Save Disabled="!CanSave">Save</Button>
-                <Button Color="ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
+                <Button Color="BlazorBootstrap.ButtonColor.Info" @onclick=@((a) => {preview = !preview;})>Preview</Button>
+                <Button Color="BlazorBootstrap.ButtonColor.Primary" @onclick=@Save Disabled="!CanSave">Save</Button>
+                <Button Color="BlazorBootstrap.ButtonColor.Danger" @onclick=@Cancel>Cancel</Button>
             </div>
         </div>
     </div>

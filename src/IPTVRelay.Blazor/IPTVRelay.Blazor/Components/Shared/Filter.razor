@@ -3,7 +3,7 @@
 
 @code {
 
-    private TFilter Current = new();
+    private TFilter Current = new() { Invert = true, FilterType = Database.Enums.FilterType.Contains };
 
     [Parameter] public List<TItem> Items { get; set; } = [];
     [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
@@ -11,45 +11,55 @@
     [Parameter] public EventCallback<TFilter> OnTest { get; set; }
     [Parameter] public EventCallback<TFilter> OnApply { get; set; }
     [Parameter] public EventCallback<TFilter> OnDelete { get; set; }
-}
 
-<table class="filterTable">
-    <tr>
+    private Dictionary<Database.Enums.FilterType, string> FilterTypes { get; } =
+        Enum.GetValues<Database.Enums.FilterType>().ToDictionary(e => e, e => e.AsString(EnumFormat.Description) ?? e.ToString());
+
+}
+<Table TItem="TFilter" Items="Filters" Class="filterTable">
+    <HeaderColumns>
         <th class="filterType">Type</th>
         <th class="filterContent">Value</th>
         <th class="filterInvert">Invert</th>
         <th class="filterButton"></th>
         <th></th>
-    </tr>
-    <tr>
-        <td>
-            <Dropdown Size="Size.Small">
-                <DropdownActionButton Style="width: 5em;" Color="ButtonColor.Secondary">@(Current.FilterType.AsString(EnumFormat.Description))</DropdownActionButton>
-                <DropdownToggleButton Color="ButtonColor.Secondary" />
-                <DropdownMenu>
-                    @foreach (var t in Enum.GetValues<Database.Enums.FilterType>().Skip(1))
-                    {
-                        <DropdownItem Type="ButtonType.Link" @onclick=@((a)=>FilterTypeChanged(t))>@(t.AsString(EnumFormat.Description))</DropdownItem>
-                    }
-                </DropdownMenu>
-            </Dropdown>
-        </td>
-        <td><InputText class="form-control" @bind-Value=Current.FilterContent></InputText></td>
-        <td><Switch @bind-Value="Current.Invert" /></td>
-        <td><Button Color="ButtonColor.Primary" Disabled=@(Current.FilterType == Database.Enums.FilterType.None) @onclick=@((a)=>Test())>Test</Button></td>
-        <td><Button Color="ButtonColor.Success" Disabled=@(Current.FilterType == Database.Enums.FilterType.None) @onclick=@((a)=>Apply())>Apply</Button></td>
-    </tr>
-    @foreach (var f in Filters)
-    {
+    </HeaderColumns>
+    <PreRows>
         <tr>
-            <td>@f.FilterType.ToString()</td>
-            <td>@f.FilterContent</td>
-            <td>@f.Invert.ToString()</td>
-            <td><Button Color="ButtonColor.Danger" @onclick=@(()=>Delete(f))>Delete</Button></td>
-            <td></td>
+            <td colspan="5">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <DropDownList TItem=Database.Enums.FilterType @bind-SelectedItem=Current.FilterType Values=FilterTypes OutlineColor="ButtonOutlineColor.Light" Color="ButtonColor.Secondary" />
+                    </div>
+                    <InputText class="form-control" @bind-Value="Current.FilterContent"></InputText>
+                    <div class="input-group-append">
+                        <div class="input-group-text">
+                            <input type="checkbox" aria-label="" @bind-value="Current.Invert">
+                        </div>
+                        <EyeButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Test"></EyeButton>
+                        <AddButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Apply"></AddButton>
+                    </div>
+                </div>
+            </td>
         </tr>
-    }
-</table>
+    </PreRows>
+    <RowColumns>
+        <td colspan="5">
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <DropDownList TItem=Database.Enums.FilterType SelectedItem=context.FilterType Values=FilterTypes OutlineColor="ButtonOutlineColor.Dark" Color="ButtonColor.Secondary" Disabled=true />
+                </div>
+                <InputText class="form-control" disabled @bind-Value="context.FilterContent"></InputText>
+                <div class="input-group-append">
+                    <div class="input-group-text">
+                        <input type="checkbox" disabled aria-label="">
+                    </div>
+                    <DeleteButton @onclick="() => Delete(context)"></DeleteButton>
+                </div>
+            </div>
+        </td>
+    </RowColumns>
+</Table>
 
 @if (ChildContent != null && Items != null && Items.Count > 0)
 {
@@ -68,7 +78,7 @@
     private async Task Apply()
     {
         await OnApply.InvokeAsync(Current);
-        Current = new() { FilterType = Current.FilterType };
+        Current = new() { FilterType = Current.FilterType, Invert = true };
     }
     private async Task Delete(TFilter filter)
     {
