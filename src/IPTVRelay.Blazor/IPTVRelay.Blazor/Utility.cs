@@ -127,6 +127,7 @@ namespace IPTVRelay.Blazor
 									Data = [
 										new M3UItemData { Key = "tvg-id", Value = previous.ToString() },
 										new M3UItemData { Key = "tvg-name", Value = m.Name },
+										new M3UItemData { Key = "group-title", Value = m.Category },
 										new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
 										new M3UItemData { Key = "tvg-chno", Value = previous.ToString() },
 										new M3UItemData { Key = "TrackTitle", Value = m.Name }
