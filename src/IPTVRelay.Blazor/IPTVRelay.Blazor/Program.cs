@@ -4,11 +4,13 @@ using IPTVRelay.Blazor.Client.Pages;
 using IPTVRelay.Blazor.Components;
 using IPTVRelay.Database;
 using IPTVRelay.Database.Enums;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using System.IO;
 
 namespace IPTVRelay.Blazor
 {
@@ -29,6 +31,7 @@ namespace IPTVRelay.Blazor
                 .AddDbContext<IPTVRelayContext>(options => options.UseSqlite(new SqliteConnectionStringBuilder { DataSource = Path.Combine(dataDirectory.FullName, "IPTVRelay.db") }.ToString()))
                 .AddSingleton(config)
                 .AddBlazorBootstrap()
+                .AddHangfireServer()
                 .AddRazorComponents()
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
@@ -52,7 +55,6 @@ namespace IPTVRelay.Blazor
             app.UseStaticFiles();
             app.UseAntiforgery();
 
-            app.UseHangfireServer();
 
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()
@@ -96,13 +98,17 @@ namespace IPTVRelay.Blazor
                     {
                         FileProvider = new PhysicalFileProvider(Path.Combine(dataDirectory.FullName, directory)),
                         RequestPath = $"/{directory}",
+                        ContentTypeProvider = new FileExtensionContentTypeProvider
+                        {
+                            Mappings = { [".m3u"] = "application/x-mpegURL", [".m3u8"] = "application/x-mpegURL", [".ts"] = "video/MP2T", [".xml"] = "application/xml" }
+                        },
                         OnPrepareResponseAsync = async ctx =>
                         {
                             using var scope = app.Services.CreateScope();
 
                             var db = scope.ServiceProvider.GetRequiredService<IPTVRelayContext>();
                             var settings = await db.Setting.ToDictionaryAsync(s => s.Name, s => s.Value);
-
+                            
                             settings.TryGetValue(SettingType.API_KEY.ToString(), out var apiKey);
                             if (string.IsNullOrWhiteSpace(apiKey) ||
                                 !(ctx.Context.Request.Query.TryGetValue("apikey", out var requestKey) || ctx.Context.Request.Headers.TryGetValue("API-Key", out requestKey)) ||
@@ -111,6 +117,24 @@ namespace IPTVRelay.Blazor
                                 ctx.Context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                                 await ctx.Context.Response.WriteAsync("Unauthorized");
                             }
+                        }
+                    });
+                }
+                {
+                    var directory = "preview";
+                    var staticDirectory = new DirectoryInfo(Path.Combine(dataDirectory.FullName, directory));
+                    if (!staticDirectory.Exists) staticDirectory.Create();
+
+                    app.UseStaticFiles(new StaticFileOptions
+                    {
+                        FileProvider = new PhysicalFileProvider(Path.Combine(dataDirectory.FullName, directory)),
+                        RequestPath = $"/{directory}",
+                        ContentTypeProvider = new FileExtensionContentTypeProvider
+                        {
+                            Mappings = { [".m3u"] = "application/x-mpegURL", [".m3u8"] = "application/x-mpegURL", [".ts"] = "video/MP2T" }
+                        },
+                        OnPrepareResponseAsync = async ctx =>
+                        {
 
                         }
                     });

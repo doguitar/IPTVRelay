@@ -1,0 +1,96 @@
+﻿@inherits BaseComponent
+@inject NavigationManager Nav
+@inject IJSRuntime JS;
+@code {
+    public M3UItem? _m3uItem = null;
+    [Parameter]
+    public M3UItem? M3UItem
+    {
+        get { return _m3uItem; }
+        set { _m3uItem = value; if (value != null) Reload = true; }
+    }
+    private string? StreamUri;
+    private bool Reload;
+}
+
+@if (!IsLoading && !string.IsNullOrWhiteSpace(StreamUri))
+{
+    <div>test</div>
+    <video width="100%" controls autoplay id=@($"videopreview{M3UItem.Created.Ticks}")>
+        Your browser does not support the video tag.
+    </video>
+}
+
+@code {
+
+    protected override async Task OnParametersSetAsync()
+
+    {
+        await Load();
+    }
+    protected async Task Load()
+    {
+        if (Reload)
+        {
+            try
+            {
+                var currentUri = Nav.ToBaseRelativePath(Nav.Uri);
+                var baseUri = new Uri(Nav.Uri.Replace(currentUri, ""));
+                if (Uri.TryCreate(M3UItem?.Url, UriKind.Absolute, out var uri))
+                {
+                    var dataFolder = Config.GetValue<string>("DATA_FOLDER");
+
+                    var dir = new DirectoryInfo(dataFolder);
+                    if (!dir.Exists)
+                    {
+                        dir.Create();
+                    }
+                    var tempDir = new DirectoryInfo(Path.Combine(dir.FullName, "preview"));
+                    if (!tempDir.Exists)
+                    {
+                        tempDir.Create();
+                    }
+                    var outputDir = new DirectoryInfo(Path.Combine(dir.FullName, "output"));
+                    if (!outputDir.Exists)
+                    {
+                        outputDir.Create();
+                    }
+
+                    var filename = Guid.NewGuid().ToString().Replace("-", string.Empty);
+                    var fileprefix = Path.Combine(tempDir.FullName, filename);
+
+                    var closeAction = await FfmpegWrapper.RehostStream(uri.ToString(), fileprefix);
+
+                    var playlistFile = new FileInfo($"{fileprefix}.m3u8");
+
+                    var startTime = DateTime.UtcNow;
+                    while (!File.Exists(playlistFile.FullName))
+                    {
+                        if ((DateTime.UtcNow - startTime).TotalSeconds > 10)
+                        {
+                            break;
+                        }
+                    }
+                    if (File.Exists(playlistFile.FullName))
+                    {
+                        var apiKey = await DB.Setting.FirstOrDefaultAsync(s => s.Name == "API_KEY");
+                        var masterPlaylist = new FileInfo(Path.Combine(outputDir.FullName, "preview.m3u8"));
+                        File.WriteAllLines(masterPlaylist.FullName, new[]
+                        {
+                        new Uri(baseUri, $"preview/{filename}.m3u8").ToString()
+                    });
+
+                        StreamUri = new Uri(baseUri, $"output/preview.m3u8?apikey={apiKey?.Value}").ToString();
+                        await SetLoaded();
+                        await JS.InvokeVoidAsync("previewVideo", new[] { $"videopreview{M3UItem.Created.Ticks}", new Uri(baseUri, $"preview/{filename}.m3u8").ToString() });
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+
+            }
+        }
+        Reload = false;
+    }
+}

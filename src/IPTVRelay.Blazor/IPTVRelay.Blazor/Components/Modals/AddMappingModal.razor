@@ -7,6 +7,7 @@
     {
         public M3UItem? Item;
         public bool Filtered;
+        public bool Previewing;
 
         public override string ToString()
         {
@@ -98,7 +99,16 @@
                                     </div>
                                 }
                             </div>
+                            @if (!(fi?.Previewing ?? true))
+                            {
+                                <PlayButton OnClick="(()=>fi.Previewing = !fi.Previewing)"></PlayButton>
+                            }
+                            else
+                            {
+                                <PreviewModal M3UItem="fi?.Item"></PreviewModal>
+                            }
                         </Filter>
+
                     }
                 }
             }

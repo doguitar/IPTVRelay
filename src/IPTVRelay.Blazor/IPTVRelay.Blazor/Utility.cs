@@ -59,7 +59,7 @@ namespace IPTVRelay.Blazor
                     await WriteToDisk(config, playlist);
                 }
 
-                playlist.Count = playlist.Items.Count;
+                playlist.Count = playlist?.Items?.Count ?? 0;
 
                 return playlist;
             }
