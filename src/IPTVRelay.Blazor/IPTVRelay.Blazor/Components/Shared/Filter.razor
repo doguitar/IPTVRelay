@@ -1,104 +1,156 @@
-﻿@typeparam TFilter where TFilter : Filter, new()
+﻿@inherits BaseComponent
+
+@typeparam TFilter where TFilter : Filter, new()
 @typeparam TItem
 
 @code {
 
-    private TFilter Current = new() { Invert = true, FilterType = Database.Enums.FilterType.Contains };
+	public class FilterView<T>
+	{
+		public T? Item { get; set; }
+		public bool Filtered { get; set; }
+		public override string ToString()
+		{
+			return Item?.ToString() ?? string.Empty;
+		}
+	}
 
-    [Parameter] public List<TItem> Items { get; set; } = [];
-    [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
-    [Parameter] public List<TFilter> Filters { get; set; } = [];
-    [Parameter] public EventCallback<TFilter> OnTest { get; set; }
-    [Parameter] public EventCallback<TFilter> OnApply { get; set; }
-    [Parameter] public EventCallback<TFilter> OnDelete { get; set; }
+	private TFilter Current = new() { Invert = true, FilterType = Database.Enums.FilterType.Contains };
+	[Parameter] public List<TItem> Items { get; set; }
+	[Parameter] public List<FilterView<TItem>>? FilteredItems { get; set; } = null;
+	[Parameter] public RenderFragment<FilterView<TItem>>? ChildContent { get; set; }
+	[Parameter] public List<TFilter> Filters { get; set; } = [];
+	[Parameter] public EventCallback<TFilter> OnTest { get; set; }
+	[Parameter] public EventCallback<TFilter> OnApply { get; set; }
+	[Parameter] public EventCallback<TFilter> OnDelete { get; set; }
 
-    private Dictionary<Database.Enums.FilterType, string> FilterTypes { get; } =
-        Enum.GetValues<Database.Enums.FilterType>().ToDictionary(e => e, e => e.AsString(EnumFormat.Description) ?? e.ToString());
+	private Dictionary<Database.Enums.FilterType, string> FilterTypes { get; } =
+		Enum.GetValues<Database.Enums.FilterType>().ToDictionary(e => e, e => e.AsString(EnumFormat.Description) ?? e.ToString());
 
 }
-<Table TItem="TFilter" Items="Filters" Class="filterTable">
-    <HeaderColumns>
-        <th class="filterType">Type</th>
-        <th class="filterContent">Value</th>
-        <th class="filterInvert">Invert</th>
-        <th class="filterButton"></th>
-        <th></th>
-    </HeaderColumns>
-    <PreRows>
-        <tr>
-            <td colspan="5">
-                <div class="input-group">
-                    <div class="input-group-prepend">
-                        <DropDownList TItem=Database.Enums.FilterType @bind-SelectedItem=Current.FilterType Values=FilterTypes OutlineColor="ButtonOutlineColor.Light" Color="ButtonColor.Secondary" />
-                    </div>
-                    <InputText class="form-control" @bind-Value="Current.FilterContent"></InputText>
-                    <div class="input-group-append">
-                        <div class="input-group-text">
-                            <input type="checkbox" aria-label="" @bind-value="Current.Invert">
-                        </div>
-                        <EyeButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Test"></EyeButton>
-                        <AddButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Apply"></AddButton>
-                    </div>
-                </div>
-            </td>
-        </tr>
-    </PreRows>
-    <RowColumns>
-        <td colspan="5">
-            <div class="input-group">
-                <div class="input-group-prepend">
-                    <DropDownList TItem=Database.Enums.FilterType SelectedItem=context.FilterType Values=FilterTypes OutlineColor="ButtonOutlineColor.Dark" Color="ButtonColor.Secondary" Disabled=true />
-                </div>
-                <InputText class="form-control" disabled @bind-Value="context.FilterContent"></InputText>
-                <div class="input-group-append">
-                    <div class="input-group-text">
-                        <input type="checkbox" disabled aria-label="">
-                    </div>
-                    <DeleteButton @onclick="() => Delete(context)"></DeleteButton>
-                </div>
-            </div>
-        </td>
-    </RowColumns>
-</Table>
+<Loader IsLoading=IsLoading>
+	<Table TItem="TFilter" Items="Filters" Class="filterTable">
+		<HeaderColumns>
+			<th class="filterType">Type</th>
+			<th class="filterContent">Value</th>
+			<th class="filterInvert">Invert</th>
+			<th class="filterButton"></th>
+			<th></th>
+		</HeaderColumns>
+		<PreRows>
+			<tr>
+				<td colspan="5">
+					<div class="input-group">
+						<div class="input-group-prepend">
+							<DropDownList TItem=Database.Enums.FilterType @bind-SelectedItem=Current.FilterType Values=FilterTypes OutlineColor="ButtonOutlineColor.Light" Color="ButtonColor.Secondary" />
+						</div>
+						<InputText class="form-control" @bind-Value="Current.FilterContent"></InputText>
+						<div class="input-group-append">
+							<div class="input-group-text">
+								<input type="checkbox" aria-label="" checked="@(Current.Invert)">
+							</div>
+							<EyeButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Test"></EyeButton>
+							<AddButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Apply"></AddButton>
+						</div>
+					</div>
+				</td>
+			</tr>
+		</PreRows>
+		<RowColumns>
+			<td colspan="5">
+				<div class="input-group">
+					<div class="input-group-prepend">
+						<DropDownList TItem=Database.Enums.FilterType SelectedItem=context.FilterType Values=FilterTypes OutlineColor="ButtonOutlineColor.Dark" Color="ButtonColor.Secondary" Disabled=true />
+					</div>
+					<InputText class="form-control" disabled @bind-Value="context.FilterContent"></InputText>
+					<div class="input-group-append">
+						<div class="input-group-text">
+							<input type="checkbox" disabled checked="@(Current.Invert)" aria-label="">
+						</div>
+						<DeleteButton @onclick="() => Delete(context)"></DeleteButton>
+					</div>
+				</div>
+			</td>
+		</RowColumns>
+	</Table>
 
-@if (ChildContent != null && Items != null && Items.Count > 0)
-{
-    foreach (var item in Items)
-    {
-        @ChildContent(item)
-    }
-}
-
+	@if (ChildContent != null && FilteredItems != null && FilteredItems.Count > 0)
+	{
+		foreach (var item in FilteredItems)
+		{
+			@ChildContent(item)
+		}
+	}
+</Loader>
 
 @code {
-    private async Task Test()
-    {
-        await OnTest.InvokeAsync(Current);
-    }
-    private async Task Apply()
-    {
-        await OnApply.InvokeAsync(Current);
-        Current = new() { FilterType = Current.FilterType, Invert = true };
-    }
-    private async Task Delete(TFilter filter)
-    {
-        await OnDelete.InvokeAsync(filter);
-    }
-    protected void FilterTypeChanged(Database.Enums.FilterType filterType)
-    {
-        Current.FilterType = filterType;
-    }
+	public void SetItems(List<TItem> items)
+	{
+		Items = items;
+		Filters = [];
+		FilteredItems ??= Items?.Select(i=>new FilterView<TItem> { Item = i, Filtered = false }).ToList();
+	}
+	private async Task Test()
+	{
+		await TestFilter(Current);
+		//await OnTest.InvokeAsync(Current);
+	}
+	private async Task Apply()
+	{
+		//await OnApply.InvokeAsync(Current);
+		await ApplyFilter(Current);
+		Current = new() { FilterType = Current.FilterType, Invert = true };
+	}
+	private async Task Delete(TFilter filter)
+	{
+		await DeleteFilter(filter);
+		//await OnDelete.InvokeAsync(filter);
+	}
+	protected void FilterTypeChanged(Database.Enums.FilterType filterType)
+	{
+		Current.FilterType = filterType;
+	}
 
-    public void SetFilterText(string text)
-    {
-        Current.FilterContent = text;
-    }
-    public void SetFilterType(Database.Enums.FilterType type)
-    {
-        Current.FilterType = type;
-    }
-    public void SetInverted(bool inverted)
-    {
-        Current.Invert = inverted;
-    }
+	public void SetFilterText(string text)
+	{
+		Current.FilterContent = text;
+	}
+	public void SetFilterType(Database.Enums.FilterType type)
+	{
+		Current.FilterType = type;
+	}
+	public void SetInverted(bool inverted)
+	{
+		Current.Invert = inverted;
+	}
+
+
+	public async Task TestFilter(TFilter filter)
+	{
+		await SetLoading();
+		var filtered = await Library.FilterHelper.DoFilter(FilteredItems, filter);
+		await FilteredItems.Except(filtered).ParallelForEachAsync(i => i.Filtered = true);
+		await filtered.ParallelForEachAsync(i => i.Filtered = false);
+		FilteredItems = FilteredItems.OrderBy(fi => fi.Filtered).ToList();
+		await SetLoaded();
+	}
+	public async Task ApplyFilter(TFilter filter)
+	{
+		await SetLoading();
+		Filters.Add(filter);
+		FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
+		await SetLoaded();
+	}
+	public async Task DeleteFilter(TFilter filter)
+	{
+		await SetLoading();
+		if (filter.Id > 0)
+		{
+			DB.Attach(filter);
+			DB.Remove(filter);
+		}
+		Filters.Remove(filter);
+		FilteredItems = (await Library.FilterHelper.DoFilter(Items, Filters)).Select(m => new FilterView<TItem> { Filtered = false, Item = m }).ToList();
+		await SetLoaded();
+	}
 }

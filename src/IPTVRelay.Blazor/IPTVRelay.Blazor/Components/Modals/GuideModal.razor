@@ -31,8 +31,7 @@
         <div class="col-md-12">
             <div class="float-end">
                 <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
-                <Button Color="BlazorBootstrap.ButtonColor.Primary" @onclick=@Save Disabled="!CanSave">Save</Button>
-                <Button Color="BlazorBootstrap.ButtonColor.Danger" @onclick=@Cancel >Cancel</Button>
+                <CloseButton OnClick="Cancel" Disabled="!CanSave"></CloseButton>
             </div>
         </div>
     </div>
