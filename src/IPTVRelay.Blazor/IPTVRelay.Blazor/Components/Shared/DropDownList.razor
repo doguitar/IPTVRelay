@@ -21,7 +21,7 @@
     <button class="btn @Color?.AsString(EnumFormat.Description) @OutlineColor?.AsString(EnumFormat.Description) dropdown-toggle @Class @(Open ? " show" : string.Empty)"
             style="width: calc(@((Values.Values.Select(v=>v.Length).Max()+1).ToString())ch + 2em);"
             disabled=@Disabled @onclick=@(()=>Open = !Open)
-            type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            type="button" data-toggle="dropdown" data-boundary="viewport" aria-haspopup="true" aria-expanded="false">
         <div class="w-100" style="display:inline-block; text-align:left; margin-right:-2ch;">
             @selectedValue
         </div>

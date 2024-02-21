@@ -1,0 +1,158 @@
+﻿@using System.Text.RegularExpressions
+@inherits BaseModal<Mapping>
+
+
+@code {
+    List<M3UItem> Items { get; set; } = [];
+
+    string TestItem { get; set; } = string.Empty;
+
+    //string? TimeExpression { get; set; } = @"(?<=\D)\d{2}:\d{2}(?=\D)";
+    //string? TitleExpression { get; set; }
+
+    //string? TimeFormat { get; set; }
+    //string? TitleFormat { get; set; } = "{0}";
+
+    string? TimeOutput;
+    string? TitleOutput;
+
+    //string? TimeOffsetString { get; set; } = string.Empty;
+    //int? TimeOffset;
+
+    bool Preview;
+    protected Dictionary<TimeSpan, string> OffsetHours { get; set; } = Enumerable.Range(-48, 96).Select(i => TimeSpan.FromHours(i * .5)).ToDictionary(i => i, i => i.TotalHours.ToString("00.0"));
+    protected TimeSpan OffsetHour { get; set; } = TimeSpan.Zero;
+}
+
+<Loader IsLoading=@(IsLoading)>
+    @if (Model?.DummyMapping is not null)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <h4>@Model?.Name</h4>
+                <textarea class="form-control" value="@TestItem" readonly aria-describedby="basic-addon2"></textarea>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h4>Time</h4>
+                <input type=text class="form-control" value=@Model.DummyMapping.TimeExpression
+                       @oninput=@((a)=> {Model.DummyMapping.TimeExpression = a?.Value?.ToString(); CheckTimeExpression();}) />
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <DropDownList TItem=TimeSpan OutlineColor="ButtonOutlineColor.Dark" Color="Shared.ButtonColor.Secondary"
+                                      SelectedItem="@OffsetHour" Values="@OffsetHours" SelectedItemChanged=@((a) =>{OffsetHour = a; CheckTimeExpression();})></DropDownList>
+                    </div>
+                    <input type=text class="form-control" readonly @bind-value=@TimeOutput />
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <h4>Title</h4>
+                <input type=text class="form-control" value=@Model.DummyMapping.TitleExpression
+                       @oninput=@((a)=> {Model.DummyMapping.TitleExpression = a?.Value?.ToString(); CheckTitleExpression();}) />
+                <input type=text class="form-control" @bind-value=@Model.DummyMapping.TitleFormat
+                       @oninput=@((a)=> {Model.DummyMapping.TitleFormat = a?.Value?.ToString(); CheckTitleExpression();}) />
+                <input type=text class="form-control" readonly @bind-value=@TitleOutput />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="float-end">
+                    <EyeButton OnClick="()=> Preview = !Preview" Disabled="!CanSave"></EyeButton>
+                    <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
+                    <CloseButton OnClick="Cancel" Disabled="!CanSave"></CloseButton>
+                </div>
+            </div>
+        </div>
+        @if (Preview)
+        {
+            try
+            {
+                Regex reTime = new Regex(Model.DummyMapping.TimeExpression ?? string.Empty);
+                Regex reTitle = new Regex(Model.DummyMapping.TitleExpression ?? string.Empty);
+                var channel = Model.Channel;
+                <div class="row">
+                    <div class="col-md-12">
+                        <table class="table">
+                            @foreach (var i in Items)
+                            {
+                                var time = Utility.DummyChannel.GetTimeOutput(i.ToString(), OffsetHour, Model)?.ToString();
+                                var title = Utility.DummyChannel.GetTitleOutput(i.ToString(), Model);
+                                if (Model.DummyMapping.IncludeBlank || (!string.IsNullOrWhiteSpace(time) && !string.IsNullOrWhiteSpace(title)))
+                                {
+                                    <tr>
+                                        <td class="nowrap">@(channel++)</td>
+                                        <td class="nowrap">@time</td>
+                                        <td class="fill">@title</td>
+                                    </tr>
+                                }
+                            }
+                        </table>
+                    </div>
+                </div>
+            }
+            catch { }
+        }
+    }
+</Loader>
+@code {
+    protected void CheckTimeExpression()
+    {
+        if (Model.DummyMapping.TimeExpression != null)
+        {
+            var date = Utility.DummyChannel.GetTimeOutput(TestItem, OffsetHour, Model);
+            if (date.HasValue)
+            {
+                TimeOutput = date.ToString();
+                return;
+            }
+        }
+        TimeOutput = "Invalid";
+    }
+    protected void CheckTitleExpression()
+    {
+        if (Model.DummyMapping.TitleExpression != null)
+        {
+            var output = Utility.DummyChannel.GetTitleOutput(TestItem, Model);
+            if (output != null)
+            {
+                TitleOutput = output;
+                return;
+            }
+        }
+        TitleOutput = "Invalid";
+    }
+
+    public override async Task Save()
+    {
+        Model.TimeOffset = (int)OffsetHour.TotalMinutes;
+        await DB.SaveChangesAsync();
+        await OnSave.InvokeAsync();
+    }
+    public override async Task Cancel()
+    {
+        DB.ChangeTracker.Clear();
+        await OnCancel.InvokeAsync();
+    }
+    public override async Task Load()
+    {
+        await SetLoading();
+        CanSave = false;
+        DB.ChangeTracker.Clear();
+        Model = await DB.Mapping.Include(m => m.M3U).Include(m => m.Filters).Include(m => m.DummyMapping).FirstOrDefaultAsync(m => m.Id == ModelId);
+        if (Model?.M3U != null)
+        {
+            Model.M3U = await Utility.M3U.Populate(Config, Model.M3U, applyFilters: true);
+            Items = await Library.FilterHelper.DoFilter(Model.M3U.Items, Model.Filters);
+            Model.DummyMapping ??= new DummyMapping();
+            OffsetHour = Model.TimeOffsetSpan;
+        }
+        TestItem = Items?.FirstOrDefault()?.ToString() ?? string.Empty;
+        CheckTimeExpression();
+        CheckTitleExpression();
+        await SetLoaded();
+    }
+}

@@ -76,19 +76,19 @@
 
 	@if (ChildContent != null && FilteredItems != null && FilteredItems.Count > 0)
 	{
-		foreach (var item in FilteredItems)
+		foreach (var item in FilteredItems.Take(100))
 		{
 			@ChildContent(item)
 		}
 	}
 </Loader>
 
-@code {
+	@code {
 	public void SetItems(List<TItem> items)
 	{
 		Items = items;
 		Filters = [];
-		FilteredItems ??= Items?.Select(i=>new FilterView<TItem> { Item = i, Filtered = false }).ToList();
+		FilteredItems = Items?.Select(i=>new FilterView<TItem> { Item = i, Filtered = false }).ToList();
 	}
 	private async Task Test()
 	{
@@ -146,8 +146,7 @@
 		await SetLoading();
 		if (filter.Id > 0)
 		{
-			DB.Attach(filter);
-			DB.Remove(filter);
+			DB.Entry(filter).State = EntityState.Deleted;
 		}
 		Filters.Remove(filter);
 		FilteredItems = (await Library.FilterHelper.DoFilter(Items, Filters)).Select(m => new FilterView<TItem> { Filtered = false, Item = m }).ToList();
