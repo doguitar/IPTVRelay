@@ -3,6 +3,7 @@ using System;
 using IPTVRelay.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPTVRelay.Database.Migrations
 {
     [DbContext(typeof(IPTVRelayContext))]
-    partial class IPTVRelayContextModelSnapshot : ModelSnapshot
+    [Migration("20240220191915_AddDummyMapping")]
+    partial class AddDummyMapping
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
@@ -26,14 +29,14 @@ namespace IPTVRelay.Database.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("IncludeBlank")
-                        .HasColumnType("INTEGER");
-
                     b.Property<DateTime>("Modified")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("TimeExpression")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("TimeOffset")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("TitleExpression")
                         .HasColumnType("TEXT");
@@ -138,14 +141,14 @@ namespace IPTVRelay.Database.Migrations
                     b.Property<long?>("M3UId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("MappingId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("Modified")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("TimeOffset")
-                        .HasColumnType("INTEGER");
 
                     b.Property<long?>("XMLTVItemId")
                         .HasColumnType("INTEGER");

@@ -40,8 +40,11 @@
                 <td>@context.Count</td>
             </RowColumns>
             <RowButtons>
-                <EditButton OnClick=@(()=>Edit(context.Id))></EditButton>
-                <DeleteButton OnClick=@(()=>Delete(context.Id))></DeleteButton>
+                @if (context.Id < long.MaxValue)
+                {
+                    <EditButton OnClick=@(()=>Edit(context.Id))></EditButton>
+                    <DeleteButton OnClick=@(()=>Delete(context.Id))></DeleteButton>
+                }
             </RowButtons>
         </Table>
     }
@@ -147,8 +150,7 @@
             }
             var file = Utility.XMLTV.GetFileInfo(Config, guide);
             File.WriteAllText(file.FullName, args.Content);
-
-            guides?.Add(new XMLTVView { Count = guide.Items.Count, Id = guide.Id, Uri = guide.Uri });
+      
             await DB.SaveChangesAsync();
             await Load();
         }
