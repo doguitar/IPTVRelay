@@ -7,147 +7,150 @@
 @rendermode InteractiveServer
 
 @code {
-	public class XMLTVView
-	{
-		public string? Name;
-		public long Id;
-		public int Count;
-		public string? Uri;
-	}
+    public class XMLTVView
+    {
+        public string? Name;
+        public long Id;
+        public int Count;
+        public string? Uri;
+    }
 
-	private List<XMLTVView>? guides;
-	private Modal modal = default!;
+    private List<XMLTVView>? guides;
+    private Modal modal = default!;
 }
 
 <PageTitle>Guides</PageTitle>
 
 <h1>Guides</h1>
 <Loader IsLoading=@(IsLoading || guides == null)>
-	@if (guides != null)
-	{
-		<Table TItem="XMLTVView" Items=guides Class="nowrap">
-			<HeaderColumns>
-				<th>Name</th>
-				<th class="fill">Uri</th>
-				<th>Count</th>
-			</HeaderColumns>
-			<HeaderButtons>
-				<AddButton OnClick=Add></AddButton>
-			</HeaderButtons>
-			<RowColumns>
-				<td>@context.Name</td>
-				<td class="ellipsis">@context.Uri</td>
-				<td>@context.Count</td>
-			</RowColumns>
-			<RowButtons>
-				<EditButton OnClick=@(()=>Edit(context.Id))></EditButton>
-				<DeleteButton OnClick=@(()=>Delete(context.Id))></DeleteButton>
-			</RowButtons>
-		</Table>
-	}
-	<Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" HeaderCssClass="hidden" />
+    @if (guides != null)
+    {
+        <Table TItem="XMLTVView" Items=guides Class="nowrap">
+            <HeaderColumns>
+                <th>Name</th>
+                <th class="fill">Uri</th>
+                <th>Count</th>
+            </HeaderColumns>
+            <HeaderButtons>
+                <AddButton OnClick=Add></AddButton>
+            </HeaderButtons>
+            <RowColumns>
+                <td>@context.Name</td>
+                <td class="ellipsis">@context.Uri</td>
+                <td>@context.Count</td>
+            </RowColumns>
+            <RowButtons>
+                <EditButton OnClick=@(()=>Edit(context.Id))></EditButton>
+                <DeleteButton OnClick=@(()=>Delete(context.Id))></DeleteButton>
+            </RowButtons>
+        </Table>
+    }
+    <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" HeaderCssClass="hidden" />
 </Loader>
 @code {
 
-	protected override async Task OnAfterRenderAsync(bool firstRender)
-	{
-		await base.OnAfterRenderAsync(firstRender);
-		if (firstRender)
-		{
-			await Load();
-			await InvokeAsync(StateHasChanged);
-		}
-	}
-	protected async Task Load()
-	{
-		await SetLoading();
-		guides = await DB.XMLTV.Include(g => g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).ToListAsync();
-		await SetLoaded();
-	}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender)
+        {
+            await Load();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+    protected async Task Load()
+    {
+        await SetLoading();
+        guides = await DB.XMLTV.Include(g => g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).AsNoTracking().ToListAsync();
+        await SetLoaded();
+    }
 
-	protected async Task Add()
-	{
-		await modal.ShowAsync<GuideModal>("Add Guide",
-			parameters: new Dictionary<string, object> {
-				{ nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
-				{ nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) } });
-	}
-	protected async Task Delete(long guideId)
-	{
-		await SetLoading();
-		var p = await DB.XMLTV.Where(x => x.Id == guideId).Include(x => x.Items).ThenInclude(x => x.Mappings).ToListAsync();
-		DB.RemoveRange(p);
-		await DB.SaveChangesAsync();
-		await Load();
-		await SetLoaded();
-	}
-	protected async Task Edit(long guideId)
-	{
-		var guide = await DB.XMLTV.FirstOrDefaultAsync(p => p.Id == guideId);
-		if (guide != null)
-		{
-			await modal.ShowAsync<GuideModal>("Edit Playlist",
-				parameters: new Dictionary<string, object> {
-					{ nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
-					{ nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) },
-					{ nameof(GuideModal.ModelId), guide.Id }});
-		}
-	}
-	public async Task Added(XMLTVEventArgs args)
-	{
-		await SetLoading();
-		await modal.HideAsync();
-		var guide = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).FirstOrDefaultAsync(g => g.Id == args.Model.Id) ?? new XMLTV { };
-		if (guide.Id == 0)
-		{
-			await DB.AddAsync(guide);
-			await DB.SaveChangesAsync();
-		}
-		guide.Uri = args.Model.Uri;
-		guide.Name = args.Model.Name;
-		if (args.Content != null)
-		{
-			var items = await Library.XMLTVParser.Parse(args.Content);
-			if (items != null)
-			{
-				var groups = items.Concat(guide.Items).GroupBy(i => i.ChannelId, i => i).ToDictionary(g => g.Key ?? string.Empty, g => g.OrderByDescending(i => i.Mappings.Count).ThenByDescending(i => i.Id)).Select(kv => kv.Value).ToList();
+    protected async Task Add()
+    {
+        await modal.ShowAsync<GuideModal>("Add Guide",
+            parameters: new Dictionary<string, object> {
+                { nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
+                { nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) },
+                { nameof(GuideModal.ModelId), 0L } });
+    }
+    protected async Task Delete(long guideId)
+    {
+        await SetLoading();
+        var p = await DB.XMLTV.Where(x => x.Id == guideId).Include(x => x.Items).ThenInclude(x => x.Mappings).ToListAsync();
+        DB.RemoveRange(p);
+        await DB.SaveChangesAsync();
+        await Load();
+        await SetLoaded();
+    }
+    protected async Task Edit(long guideId)
+    {
+        var guide = await DB.XMLTV.FirstOrDefaultAsync(p => p.Id == guideId);
+        if (guide != null)
+        {
+            await modal.ShowAsync<GuideModal>("Edit Playlist",
+                parameters: new Dictionary<string, object> {
+                    { nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
+                    { nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) },
+                    { nameof(GuideModal.ModelId), guide.Id }});
+        }
+    }
+    public async Task Added(XMLTVEventArgs args)
+    {
+        await SetLoading();
+        await modal.HideAsync();
+        DB.ChangeTracker.Clear();
+        var guide = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings)
+            .FirstOrDefaultAsync(g => g.Id == args.Model.Id);
+        if (guide == null)
+        {
+            await DB.AddAsync(args.Model);
+            await DB.SaveChangesAsync();
+            guide = args.Model;
+        }
+        guide.Uri = args.Model.Uri;
+        guide.Name = args.Model.Name;
+        if (args.Content != null)
+        {
+            var items = await Library.XMLTVParser.Parse(args.Content);
+            if (items != null)
+            {
+                var existingItems = guide.Items.Where(i => !string.IsNullOrWhiteSpace(i.ChannelId)).GroupBy(i => i.ChannelId!, i => i).ToDictionary(g => g.Key, g => g.ToList());
+                var pendingItems = items.GroupBy(i => i.ChannelId, i => i).Where(i => !string.IsNullOrWhiteSpace(i.Key)).Select(g => g.First()).ToDictionary(i => i.ChannelId!, i => i);
+                var newItems = pendingItems.Values.Where(i => !existingItems.ContainsKey(i.ChannelId!)).ToList();
+                var missingItems = existingItems.Where(i => !pendingItems.ContainsKey(i.Key!)).ToList();
 
-				guide.Items = groups.Select(g => g.First()).Where(i => i.Id > 0).ToList();
-				foreach (var g in groups)
-				{
-					if (g.Count() == 1)
-					{
-						if (g.First().Id == 0)
-						{
-							guide.Items.Add(g.First());
-						}
-						else
-						{
-							DB.Remove(g.First());
-						}
-					}
-					else
-					{
-						var group = g.OrderByDescending(i => i.Id);
-						if (group.First().Id == 0)
-						{
-							guide.Items.Add(g.First());
-						}
-						else
-						{
-							DB.RemoveRange(group.Skip(1).Where(i => i.Id > 0));
-						}
-					}
-				}
-				DB.Attach(guide);
-			}
+                var duplicateItems = existingItems.Where(g => g.Value.Count > 1)
+                    .Select(g => g.Value.OrderByDescending(i => i.Mappings.Count()).ThenByDescending(i => i.Id))
+                    .Select(g => new { Primary = g.First(), Duplicates = g.Skip(1).ToList() });
 
-			var file = Utility.XMLTV.GetFileInfo(Config, guide);
-			File.WriteAllText(file.FullName, args.Content);
+                foreach (var d in duplicateItems)
+                {
+                    foreach (var duplicate in d.Duplicates)
+                    {
+                        var mappings = duplicate.Mappings;
+                        duplicate.Mappings.Clear();
+                        foreach (var m in mappings)
+                        {
+                            m.XMLTVItemId = d.Primary.Id;
+                            d.Primary.Mappings.Add(m);
+                        }
+                        DB.Remove(duplicate);
+                        guide.Items.Remove(duplicate);
+                    }
+                }
 
-			guides?.Add(new XMLTVView { Count = guide.Items.Count, Id = guide.Id, Uri = guide.Uri });
-			await DB.SaveChangesAsync();
-			await Load();
-		}
-	}
+                foreach (var newItem in newItems)
+                {
+                    newItem.XMLTVId = guide.Id;
+                    guide.Items.Add(newItem);
+                }
+            }
+            var file = Utility.XMLTV.GetFileInfo(Config, guide);
+            File.WriteAllText(file.FullName, args.Content);
+
+            guides?.Add(new XMLTVView { Count = guide.Items.Count, Id = guide.Id, Uri = guide.Uri });
+            await DB.SaveChangesAsync();
+            await Load();
+        }
+    }
 }
