@@ -87,6 +87,7 @@ namespace IPTVRelay.Database
                 SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
 
                 e.HasIndex(m => m.Id).IsUnique();
+                e.HasIndex(m => m.DummyMappingId);
             });
             modelBuilder.Entity<Models.MappingFilter>(e =>
             {
@@ -95,6 +96,11 @@ namespace IPTVRelay.Database
                 e.HasIndex(m => m.Id).IsUnique();
                 e.HasIndex(m => m.MappingId);
             });
+            modelBuilder.Entity<Models.DummyMapping>(e =>
+            {
+                e.HasIndex(m => m.Id).IsUnique();
+            });
+
             modelBuilder.Entity<Models.Setting>(e =>
             {
                 SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
