@@ -64,7 +64,7 @@
     protected async Task Load()
     {
         await SetLoading();
-        guides = await DB.XMLTV.Include(g => g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).ToListAsync();
+        guides = await DB.XMLTV.Include(g => g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).AsNoTracking().ToListAsync();
         await SetLoaded();
     }
 
@@ -73,7 +73,8 @@
         await modal.ShowAsync<GuideModal>("Add Guide",
             parameters: new Dictionary<string, object> {
                 { nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
-                { nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) } });
+                { nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) },
+                { nameof(GuideModal.ModelId), 0L } });
     }
     protected async Task Delete(long guideId)
     {
@@ -100,11 +101,14 @@
     {
         await SetLoading();
         await modal.HideAsync();
-        var guide = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).FirstOrDefaultAsync(g => g.Id == args.Model.Id) ?? new XMLTV { };
-        if (guide.Id == 0)
+        DB.ChangeTracker.Clear();
+        var guide = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings)
+            .FirstOrDefaultAsync(g => g.Id == args.Model.Id);
+        if (guide == null)
         {
-            await DB.AddAsync(guide);
+            await DB.AddAsync(args.Model);
             await DB.SaveChangesAsync();
+            guide = args.Model;
         }
         guide.Uri = args.Model.Uri;
         guide.Name = args.Model.Name;
@@ -113,42 +117,40 @@
             var items = await Library.XMLTVParser.Parse(args.Content);
             if (items != null)
             {
-                var groups = items.Concat(guide.Items).GroupBy(i => i.ChannelId, i => i).ToDictionary(g => g.Key ?? string.Empty, g => g.OrderByDescending(i => i.Mappings.Count).ThenByDescending(i => i.Id)).Select(kv => kv.Value).ToList();
+                var existingItems = guide.Items.Where(i => !string.IsNullOrWhiteSpace(i.ChannelId)).GroupBy(i => i.ChannelId!, i => i).ToDictionary(g => g.Key, g => g.ToList());
+                var pendingItems = items.GroupBy(i => i.ChannelId, i => i).Where(i => !string.IsNullOrWhiteSpace(i.Key)).Select(g => g.First()).ToDictionary(i => i.ChannelId!, i => i);
+                var newItems = pendingItems.Values.Where(i => !existingItems.ContainsKey(i.ChannelId!)).ToList();
+                var missingItems = existingItems.Where(i => !pendingItems.ContainsKey(i.Key!)).ToList();
 
-                guide.Items = groups.Select(g => g.First()).Where(i => i.Id > 0).ToList();
-                foreach (var g in groups)
+                var duplicateItems = existingItems.Where(g => g.Value.Count > 1)
+                    .Select(g => g.Value.OrderByDescending(i => i.Mappings.Count()).ThenByDescending(i => i.Id))
+                    .Select(g => new { Primary = g.First(), Duplicates = g.Skip(1).ToList() });
+
+                foreach (var d in duplicateItems)
                 {
-                    if (g.Count() == 1)
+                    foreach (var duplicate in d.Duplicates)
                     {
-                        if (g.First().Id == 0)
+                        var mappings = duplicate.Mappings;
+                        duplicate.Mappings.Clear();
+                        foreach (var m in mappings)
                         {
-                            guide.Items.Add(g.First());
+                            m.XMLTVItemId = d.Primary.Id;
+                            d.Primary.Mappings.Add(m);
                         }
-                        else
-                        {
-                            DB.Remove(g.First());
-                        }
-                    }
-                    else
-                    {
-                        var group = g.OrderByDescending(i => i.Id);
-                        if (group.First().Id == 0)
-                        {
-                            guide.Items.Add(g.First());
-                        }
-                        else
-                        {
-                            DB.RemoveRange(group.Skip(1).Where(i => i.Id > 0));
-                        }
+                        DB.Remove(duplicate);
+                        guide.Items.Remove(duplicate);
                     }
                 }
-                DB.Attach(guide);
-            }
 
+                foreach (var newItem in newItems)
+                {
+                    newItem.XMLTVId = guide.Id;
+                    guide.Items.Add(newItem);
+                }
+            }
             var file = Utility.XMLTV.GetFileInfo(Config, guide);
             File.WriteAllText(file.FullName, args.Content);
-
-            guides?.Add(new XMLTVView { Count = guide.Items.Count, Id = guide.Id, Uri = guide.Uri });
+      
             await DB.SaveChangesAsync();
             await Load();
         }
