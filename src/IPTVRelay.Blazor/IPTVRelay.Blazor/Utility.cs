@@ -189,39 +189,57 @@ namespace IPTVRelay.Blazor
         }
         public static class XMLTV
         {
-            public static void Merge(string content, Database.Models.XMLTV guide, out List<XMLTVItem> removed, out List<XMLTVItem> added)
+            public static async Task<Database.Models.XMLTV?> Update(IConfiguration config, IPTVRelayContext DB, long id, string? content = null)
             {
-                removed = new List<XMLTVItem>();
-                added = new List<XMLTVItem>();
+                var guide = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings)
+                    .FirstOrDefaultAsync(g => g.Id == id);
+                if (guide == null) return null;
 
-                var items = XMLTVParser.Parse(content).GetAwaiter().GetResult();
-                var dict = items.ToDictionary(i => i.ChannelId, i => i);
-                for (var i = 0; i < guide.Items.Count; i++)
+                if (content == null)
                 {
-                    if (!dict.ContainsKey(guide.Items[i].ChannelId))
+                    content = await Populate(config, guide, refresh: true);
+                }
+                if (content == null) return null;
+                var items = await Library.XMLTVParser.Parse(content);
+                if (items == null) return null;
+
+                var existingItems = guide.Items.Where(i => !string.IsNullOrWhiteSpace(i.ChannelId)).GroupBy(i => i.ChannelId!, i => i).ToDictionary(g => g.Key, g => g.ToList());
+                var pendingItems = items.GroupBy(i => i.ChannelId, i => i).Where(i => !string.IsNullOrWhiteSpace(i.Key)).Select(g => g.First()).ToDictionary(i => i.ChannelId!, i => i);
+                var newItems = pendingItems.Values.Where(i => !existingItems.ContainsKey(i.ChannelId!)).ToList();
+                var missingItems = existingItems.Where(i => !pendingItems.ContainsKey(i.Key!)).ToList();
+
+                var duplicateItems = existingItems.Where(g => g.Value.Count > 1)
+                    .Select(g => g.Value.OrderByDescending(i => i.Mappings.Count()).ThenByDescending(i => i.Id))
+                    .Select(g => new { Primary = g.First(), Duplicates = g.Skip(1).ToList() });
+
+                foreach (var d in duplicateItems)
+                {
+                    foreach (var duplicate in d.Duplicates)
                     {
-                        removed.Add(guide.Items[i]);
-                        guide.Items.RemoveAt(i);
-                        i--;
-                    }
-                    else
-                    {
-                        items[i].Data.AddRange(dict[items[i].ChannelId].Data);
+                        var mappings = duplicate.Mappings;
+                        duplicate.Mappings.Clear();
+                        foreach (var m in mappings)
+                        {
+                            m.XMLTVItemId = d.Primary.Id;
+                            d.Primary.Mappings.Add(m);
+                        }
+                        DB.Remove(duplicate);
+                        guide.Items.Remove(duplicate);
                     }
                 }
-                dict = guide.Items.ToDictionary(i => i.ChannelId, i => i);
-                for (var i = 0; i < items.Count; i++)
+
+                foreach (var newItem in newItems)
                 {
-                    if (!dict.ContainsKey(items[i].ChannelId))
-                    {
-                        guide.Items.Add(items[i]);
-                        added.Add(items[i]);
-                    }
-                    else
-                    {
-                        items[i].Data.AddRange(dict[items[i].ChannelId].Data);
-                    }
+                    newItem.XMLTVId = guide.Id;
+                    guide.Items.Add(newItem);
                 }
+
+                var file = Utility.XMLTV.GetFileInfo(config, guide);
+                File.WriteAllText(file.FullName, content);
+
+                await DB.SaveChangesAsync();
+
+                return guide;
             }
 
             public static FileInfo GetFileInfo(IConfiguration config, Database.Models.XMLTV guide)
@@ -364,22 +382,24 @@ namespace IPTVRelay.Blazor
                                         channelNodes.Add(@$"<channel id=""{channelid}""><display-name>{chname}</display-name><icon src=""{icon}"" height=""270"" width=""360""></icon></channel>");
 
                                     }
-                                    var pastdate = $"{DateTime.Today.AddDays(-1):yyyyMMddhhmm00 +0000}";
-                                    var futuredate = $"{DateTime.Today.AddDays(2):yyyyMMddhhmm00 +0000}";
+                                    var pastdate = $"{DateTime.Today.AddDays(-1):yyyyMMddHHmm00 +0000}";
+                                    var futuredate = $"{DateTime.Today.AddDays(2):yyyyMMddHHmm00 +0000}";
                                     var offair = $"Off Air";
                                     if (!string.IsNullOrWhiteSpace(title) && start.HasValue)
                                     {
-                                        start = new DateTime(start.Value.Year, start.Value.Month, start.Value.Day, start.Value.Hour, start.Value.Minute, 0, DateTimeKind.Local);
-                                        
-                                        var startdate = $"{start:yyyyMMddhhmm00 +0000}";   //20240209210000 +0000
-                                        int.TryParse(m.XMLTVItem.ChannelId.Replace("Dummy.", string.Empty), out var duration);
-                                        var enddate = $"{start.Value.AddMinutes(duration):yyyyMMddhhmm00 +0000}";     //20240209213000 +0000
+                                        var local = new DateTime(start.Value.Year, start.Value.Month, start.Value.Day, start.Value.Hour, start.Value.Minute, 0, DateTimeKind.Local);
+                                        var utc = local.ToUniversalTime();
 
-                                        programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{pastdate}"" stop=""{startdate}""><title lang=""en"">{$"{offair} until {start.Value:hh:mm}"}</title></programme>");
+                                        var startdate = $"{utc:yyyyMMddHHmm00 +0000}";
+                                        var duration = 30;
+                                        _ = int.TryParse(m?.XMLTVItem?.ChannelId?.Replace("Dummy.", string.Empty), out duration);
+                                        var enddate = $"{utc.AddMinutes(duration):yyyyMMddHHmm00 +0000}";
+
+                                        programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{pastdate}"" stop=""{startdate}""><title lang=""en"">{$"{offair} until {local:hh:mm} - {title}"}</title></programme>");
                                         programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{startdate}"" stop=""{enddate}""><title lang=""en"">{title}</title></programme>");
                                         programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{enddate}"" stop=""{futuredate}""><title lang=""en"">{offair}</title></programme>");
                                     }
-                                    else if(m.DummyMapping.IncludeBlank)
+                                    else if (m.DummyMapping.IncludeBlank)
                                     {
                                         programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{pastdate}"" stop=""{futuredate}""><title lang=""en"">{offair}</title></programme>");
                                     }
@@ -490,9 +510,9 @@ namespace IPTVRelay.Blazor
                                 }
                                 else
                                 {
-                                    if (match.Groups.ContainsKey(value))
+                                    if (match.Groups.ContainsKey(key))
                                     {
-                                        replaceValue = match.Groups[value].Value;
+                                        replaceValue = match.Groups[key].Value;
                                     }
                                 }
                                 if (replaceValue is not null)
@@ -527,41 +547,23 @@ namespace IPTVRelay.Blazor
                 public async Task Update()
                 {
                     {
-                        var playlists = await DB.M3U.Include(p => p.Filters).ToListAsync();
+                        var playlists = await DB.M3U.Include(p => p.Filters).AsNoTracking().ToListAsync();
 
                         await Task.WhenAll(playlists.Where(p => p.ParentId.GetValueOrDefault() == 0).Select(p => PopulateM3URecursive(p, playlists)));
 
                         await DB.SaveChangesAsync();
                     }
                     DB.ChangeTracker.Clear();
+                    GC.Collect();
                     {
-                        var guides = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).ToListAsync();
+                        var guides = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).AsNoTracking().ToListAsync();
                         foreach (var guide in guides)
                         {
-                            Database.Models.XMLTV newGuide = new();
-                            string content = string.Empty;
-                            try
-                            {
-                                content = await XMLTV.Populate(Config, guide, refresh: true, applyFilters: true);
-                                newGuide.Items = await XMLTVParser.Parse(content);
-                            }
-                            catch { continue; }
-                            var removed = guide.Items.Except(newGuide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
-                            var added = newGuide.Items.Except(guide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
-
-                            if (removed.Any() || added.Any())
-                            {
-                                guide.Items.RemoveAll(i => removed.Any(r => r.ChannelId == i.ChannelId));
-                                DB.RemoveRange(removed);
-                                guide.Items.AddRange(added);
-                                added.ForEach(a => a.XMLTVId = guide.Id);
-                                await DB.SaveChangesAsync();
-                            }
-
-                            await XMLTV.WriteToDisk(Config, guide, content);
+                            await XMLTV.Update(Config, DB, guide.Id);
                         }
                     }
                     DB.ChangeTracker.Clear();
+                    GC.Collect();
                     {
                         var mappings = await DB.Mapping
                             .Include(m => m.XMLTVItem)
@@ -575,7 +577,7 @@ namespace IPTVRelay.Blazor
                         await XMLTV.Generate(Config, mappings);
                     }
                     DB.ChangeTracker.Clear();
-
+                    GC.Collect();
                 }
                 private async Task PopulateM3URecursive(Database.Models.M3U playlist, List<Database.Models.M3U> playlists)
                 {

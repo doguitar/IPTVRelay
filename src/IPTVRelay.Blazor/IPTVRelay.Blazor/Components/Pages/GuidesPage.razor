@@ -64,6 +64,7 @@
     protected async Task Load()
     {
         await SetLoading();
+        DB.ChangeTracker.Clear();
         guides = await DB.XMLTV.Include(g => g.Items).OrderBy(m => m.Created).Select(m => new XMLTVView { Name = m.Name, Id = m.Id, Uri = m.Uri, Count = m.Items.Count }).AsNoTracking().ToListAsync();
         await SetLoaded();
     }
@@ -114,45 +115,10 @@
         guide.Name = args.Model.Name;
         if (args.Content != null)
         {
-            var items = await Library.XMLTVParser.Parse(args.Content);
-            if (items != null)
-            {
-                var existingItems = guide.Items.Where(i => !string.IsNullOrWhiteSpace(i.ChannelId)).GroupBy(i => i.ChannelId!, i => i).ToDictionary(g => g.Key, g => g.ToList());
-                var pendingItems = items.GroupBy(i => i.ChannelId, i => i).Where(i => !string.IsNullOrWhiteSpace(i.Key)).Select(g => g.First()).ToDictionary(i => i.ChannelId!, i => i);
-                var newItems = pendingItems.Values.Where(i => !existingItems.ContainsKey(i.ChannelId!)).ToList();
-                var missingItems = existingItems.Where(i => !pendingItems.ContainsKey(i.Key!)).ToList();
-
-                var duplicateItems = existingItems.Where(g => g.Value.Count > 1)
-                    .Select(g => g.Value.OrderByDescending(i => i.Mappings.Count()).ThenByDescending(i => i.Id))
-                    .Select(g => new { Primary = g.First(), Duplicates = g.Skip(1).ToList() });
-
-                foreach (var d in duplicateItems)
-                {
-                    foreach (var duplicate in d.Duplicates)
-                    {
-                        var mappings = duplicate.Mappings;
-                        duplicate.Mappings.Clear();
-                        foreach (var m in mappings)
-                        {
-                            m.XMLTVItemId = d.Primary.Id;
-                            d.Primary.Mappings.Add(m);
-                        }
-                        DB.Remove(duplicate);
-                        guide.Items.Remove(duplicate);
-                    }
-                }
-
-                foreach (var newItem in newItems)
-                {
-                    newItem.XMLTVId = guide.Id;
-                    guide.Items.Add(newItem);
-                }
-            }
-            var file = Utility.XMLTV.GetFileInfo(Config, guide);
-            File.WriteAllText(file.FullName, args.Content);
-      
             await DB.SaveChangesAsync();
-            await Load();
+            await Utility.XMLTV.Update(Config, DB, guide.Id, args.Content);
         }
+        await Load();
+        await SetLoaded();
     }
 }
