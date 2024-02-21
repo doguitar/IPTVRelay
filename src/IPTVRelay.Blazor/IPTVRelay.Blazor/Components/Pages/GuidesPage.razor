@@ -70,7 +70,7 @@
 		await modal.ShowAsync<GuideModal>("Add Guide",
 			parameters: new Dictionary<string, object> {
 				{ nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
-				{ nameof(GuideModal.OnCancel), EventCallback.Factory.Create<XMLTVEventArgs>(this, async (args)=> await modal.HideAsync()) } });
+				{ nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) } });
 	}
 	protected async Task Delete(long guideId)
 	{
@@ -89,7 +89,7 @@
 			await modal.ShowAsync<GuideModal>("Edit Playlist",
 				parameters: new Dictionary<string, object> {
 					{ nameof(GuideModal.OnSave), EventCallback.Factory.Create<XMLTVEventArgs>(this, Added) },
-					{ nameof(GuideModal.OnCancel), EventCallback.Factory.Create<XMLTVEventArgs>(this, async (args)=> await modal.HideAsync()) },
+					{ nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) },
 					{ nameof(GuideModal.ModelId), guide.Id }});
 		}
 	}
