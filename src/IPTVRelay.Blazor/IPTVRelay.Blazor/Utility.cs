@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -455,6 +456,13 @@ namespace IPTVRelay.Blazor
 
         public static class DummyChannel
         {
+            static readonly string[] MINUTE = new[] { "m", "mm" };
+            static readonly string[] HOUR = new[] { "H", "HH", "h", "hh" };
+            static readonly string[] AMPM = new[] { "t", "tt" };
+            static readonly string[] DAY = new[] { "d", "dd" };
+            static readonly string[] MONTH = new[] { "M", "MM", "MMM", "MMMM" };
+            static readonly string[] YEAR = new[] { "y", "yy", "yyyy" };
+
             public static Match? CheckExpression(string expression, string value)
             {
                 try
@@ -473,11 +481,52 @@ namespace IPTVRelay.Blazor
                 var match = CheckExpression(mapping.DummyMapping.TimeExpression, input);
                 if (match?.Success ?? false)
                 {
-                    var output = match?.Groups[0]?.Value ?? string.Empty;
+                    var formatParts = new List<string>();
+                    var valueParts = new List<string>();
 
-                    if (TimeOnly.TryParse(output, out var time))
+                    var date = new[] { YEAR, MONTH, DAY, }.Reverse();
+                    var anyfound = false;
+                    foreach (var group in date)
                     {
-                        var actual = DateTime.Now.Date.Add(time.ToTimeSpan()).Add(offset);
+                        var found = false;
+                        foreach (var key in group)
+                        {
+                            if (match?.Groups?.ContainsKey(key) ?? false)
+                            {
+                                formatParts.Add(key);
+                                valueParts.Add(match!.Groups[key].Value);
+                                found = true;
+                                anyfound = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            formatParts.Add(group.First());
+                            valueParts.Add(DateTime.Now.ToString($"%{group.First()}", CultureInfo.CurrentCulture));
+                        }
+                    }
+                    var time = new[] { HOUR, MINUTE, AMPM };
+                    foreach (var group in time)
+                    {
+                        foreach (var key in group)
+                        {
+                            if (match?.Groups?.ContainsKey(key) ?? false)
+                            {
+                                formatParts.Add(key);
+                                valueParts.Add(match!.Groups[key].Value);
+                                anyfound = true;
+                                break;
+                            }
+                        }
+                    }
+                    if(!anyfound) return null;
+                    var value = string.Join(" ", valueParts);
+                    var format = string.Join(" ", formatParts);
+
+                    if (DateTime.TryParseExact(value, format, CultureInfo.CurrentCulture, DateTimeStyles.None, out var datetime))
+                    {
+                        var actual = datetime.Add(offset);
                         return actual;
                     }
                 }
