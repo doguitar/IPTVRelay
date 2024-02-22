@@ -61,6 +61,14 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="float-end">
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked=@(Model.DummyMapping.IncludeBlank)
+                               @oninput="(()=>Model.DummyMapping.IncludeBlank = !Model.DummyMapping.IncludeBlank)" id="includeblank">
+                        <label class="form-check-label" for="includeblank">
+                            Include Blank
+                        </label>
+                    </div>
                     <EyeButton OnClick="()=> Preview = !Preview" Disabled="!CanSave"></EyeButton>
                     <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
                     <CloseButton OnClick="Cancel" Disabled="!CanSave"></CloseButton>
@@ -97,8 +105,8 @@
             catch { }
         }
     }
-</Loader>
-@code {
+    </Loader>
+    @code {
     protected void CheckTimeExpression()
     {
         if (Model.DummyMapping.TimeExpression != null)

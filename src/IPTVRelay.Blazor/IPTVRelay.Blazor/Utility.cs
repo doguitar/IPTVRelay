@@ -511,7 +511,7 @@ namespace IPTVRelay.Blazor
                     {
                         foreach (var key in group)
                         {
-                            if (match?.Groups?.ContainsKey(key) ?? false)
+                            if (match.Groups.TryGetValue(key, out var g) && g.Success && !string.IsNullOrWhiteSpace(g.Value))
                             {
                                 formatParts.Add(key);
                                 valueParts.Add(match!.Groups[key].Value);
