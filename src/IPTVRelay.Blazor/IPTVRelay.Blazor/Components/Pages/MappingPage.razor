@@ -73,11 +73,11 @@
 
 	protected async Task Edit(long id)
 	{
-		await modal.ShowAsync<AddMappingModal>("Edit Mapping",
+		await modal.ShowAsync<MappingModal>("Edit Mapping",
 			parameters: new Dictionary<string, object> {
-			{ nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Edited) },
-			{ nameof(AddMappingModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
-			{ nameof(AddMappingModal.MappingId), id }});
+			{ nameof(MappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Edited) },
+			{ nameof(MappingModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
+			{ nameof(MappingModal.MappingId), id }});
 
 	}
 	protected async Task Delete(long id)
@@ -92,11 +92,11 @@
 	}
 	protected async Task Add()
 	{
-		await modal.ShowAsync<AddMappingModal>("Add Mapping",
+		await modal.ShowAsync<MappingModal>("Add Mapping",
 			parameters: new Dictionary<string, object> {
-			{ nameof(AddMappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Added) },
-			{ nameof(AddMappingModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
-			{ nameof(AddMappingModal.MappingId), 0L }});
+			{ nameof(MappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Added) },
+			{ nameof(MappingModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
+			{ nameof(MappingModal.MappingId), 0L }});
 
 	}
 	public async Task Edited(ModalEventArgs<Database.Models.Mapping> args)

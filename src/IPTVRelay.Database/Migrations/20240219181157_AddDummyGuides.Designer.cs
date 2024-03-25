@@ -3,6 +3,7 @@ using System;
 using IPTVRelay.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,44 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPTVRelay.Database.Migrations
 {
     [DbContext(typeof(IPTVRelayContext))]
-    partial class IPTVRelayContextModelSnapshot : ModelSnapshot
+    [Migration("20240219181157_AddDummyGuides")]
+    partial class AddDummyGuides
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
-
-            modelBuilder.Entity("IPTVRelay.Database.Models.DummyMapping", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IncludeBlank")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("Modified")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TimeExpression")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TitleExpression")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TitleFormat")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Id")
-                        .IsUnique();
-
-                    b.ToTable("DummyMapping");
-                });
 
             modelBuilder.Entity("IPTVRelay.Database.Models.M3U", b =>
                 {
@@ -132,9 +103,6 @@ namespace IPTVRelay.Database.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
-                    b.Property<long?>("DummyMappingId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<long?>("M3UId")
                         .HasColumnType("INTEGER");
 
@@ -144,15 +112,10 @@ namespace IPTVRelay.Database.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("TimeOffset")
-                        .HasColumnType("INTEGER");
-
                     b.Property<long?>("XMLTVItemId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DummyMappingId");
 
                     b.HasIndex("Id")
                         .IsUnique();
@@ -307,10 +270,6 @@ namespace IPTVRelay.Database.Migrations
 
             modelBuilder.Entity("IPTVRelay.Database.Models.Mapping", b =>
                 {
-                    b.HasOne("IPTVRelay.Database.Models.DummyMapping", "DummyMapping")
-                        .WithMany()
-                        .HasForeignKey("DummyMappingId");
-
                     b.HasOne("IPTVRelay.Database.Models.M3U", "M3U")
                         .WithMany()
                         .HasForeignKey("M3UId");
@@ -318,8 +277,6 @@ namespace IPTVRelay.Database.Migrations
                     b.HasOne("IPTVRelay.Database.Models.XMLTVItem", "XMLTVItem")
                         .WithMany("Mappings")
                         .HasForeignKey("XMLTVItemId");
-
-                    b.Navigation("DummyMapping");
 
                     b.Navigation("M3U");
 

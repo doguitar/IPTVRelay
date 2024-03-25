@@ -1,0 +1,111 @@
+﻿@inherits BaseModal<M3U>
+
+@code {
+    protected class FilteredItem
+    {
+        public M3UItem? Item;
+        public bool Filtered;
+    }
+
+    public Shared.Filter<M3UFilter, M3UItem> FilterControl = default!;
+    private bool preview { get; set; }
+    private List<FilteredItem> FilteredItems = [];
+    private List<M3UFilter> Filters = [];
+}
+
+<Loader IsLoading="@IsLoading">
+    @if (Model != null)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="input-group mb-3">
+                    <InputText class="form-control" placeholder="Name" aria-label="Name" aria-describedby="basic-addon2" @bind-Value=Model.Name></InputText>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="input-group mb-3">
+                    <InputText disabled="@(Model.ParentId > 0)" class="form-control" placeholder="M3U Location" aria-label="M3U Location" aria-describedby="basic-addon2" @bind-Value=Model.Uri></InputText>
+                    <div class="input-group-append">
+                        <Button Color="BlazorBootstrap.ButtonColor.Primary" @onclick=GetUri>Load</Button>
+                    </div>
+                    <div class="input-group-append">
+                        <span class="input-group-text" id="basic-addon2">@(Model?.Count.ToString() ?? string.Empty)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <h4>Filters</h4>
+                <Filter @ref="FilterControl" TFilter="M3UFilter" TItem="M3UItem" Filters="Filters">
+                    @if (preview)
+                    {
+                        var c = context.Item;
+            <tr class="@(string.Join(" ", new [] {context.Filtered? "filtered" : string.Empty}))">
+                <td style="white-space:nowrap;">@(c.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? c.Url)</td>
+                <td style="white-space:nowrap; overflow-x:scroll; width:100%">@c.ToString()</td>
+            </tr>
+
+                    }
+        </Filter>
+
+        </div>
+        </div>
+
+    }
+    <div class="row">
+        <div class="col-md-12">
+            <div class="float-end">
+                <EyeButton OnClick="(()=>preview = !preview)" Disabled="!CanSave"></EyeButton>
+                <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
+                <CloseButton OnClick="Cancel" Disabled="!CanSave"></CloseButton>
+            </div>
+        </div>
+    </div>
+</Loader>
+@code {
+
+    public override async Task Save()
+    {
+        Model.Items = FilterControl.FilteredItems.Select(v => v.Item).ToList();
+        Model.Count = Model.Items.LongCount();
+        Model.Filters = FilterControl.Filters;
+
+        await OnSave.InvokeAsync(new ModalEventArgs<M3U>(Model));
+    }
+    public override async Task Load()
+    {
+        Model = await DB.M3U.Include(p => p.Filters).FirstOrDefaultAsync(p => p.Id == ModelId) ?? new M3U();
+        if (Model.Id > 0)
+        {
+            await Utility.M3U.Populate(Config, Model, applyFilters: true);
+            FilterControl.SetItems(Model.Items);
+        }
+        Filters = Model.Filters;
+        await InvokeAsync(StateHasChanged); 
+    }
+    public async Task GetUri()
+    {
+        await SetLoading();
+        var canSave = false;
+        await InvokeAsync(StateHasChanged);
+        if (Uri.TryCreate(Model?.Uri, UriKind.Absolute, out var uri))
+        {
+            var model = await Utility.M3U.Populate(Config, Model, refresh: true, applyFilters: true);
+            if (model?.Items.Count > 0)
+            {
+                FilterControl.SetItems(Model.Items);
+                var newFilters = Filters.Where(f => f.Id == 0).ToList();
+                Filters = Filters.Where(f => f.Id != 0).ToList();
+                foreach (var f in newFilters) { await FilterControl.ApplyFilter(f); }
+                Model.Count = FilterControl.FilteredItems?.LongCount() ?? 0;
+                canSave = true;
+            }
+        }
+        CanSave = canSave;
+        await SetLoaded();
+    }
+}

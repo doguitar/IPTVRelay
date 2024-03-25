@@ -1,4 +1,5 @@
-﻿using IPTVRelay.Blazor.Components.Pages;
+﻿using Hangfire.Dashboard;
+using IPTVRelay.Blazor.Components.Pages;
 using IPTVRelay.Blazor.Components.Shared;
 using IPTVRelay.Database;
 using IPTVRelay.Database.Models;
@@ -8,8 +9,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml;
+using static IPTVRelay.Blazor.Utility;
 
 namespace IPTVRelay.Blazor
 {
@@ -106,10 +110,9 @@ namespace IPTVRelay.Blazor
                 foreach (var g in mappings.GroupBy(m => m.Channel))
                 {
                     var list = g.OrderBy(g => g.Name).ToArray();
-                    var start = Math.Max(g.Key, previous);
+                    previous = Math.Max(g.Key, previous);
                     for (long i = 0; i < list.LongLength; i++)
                     {
-                        previous = g.Key + i;
                         var m = list[i];
                         if (m?.M3UId != null)
                         {
@@ -118,21 +121,59 @@ namespace IPTVRelay.Blazor
                                 playlists[m.M3UId.Value] = (await Populate(config, new Database.Models.M3U { Id = m.M3UId.Value })).Items;
                             }
                             var playlistItems = playlists[m.M3UId.Value].ToList();
-                            var playlistItem = (await FilterHelper.DoFilter(playlistItems, m.Filters))?.FirstOrDefault();
-                            if (playlistItem != null)
+                            if (m.XMLTVItem?.XMLTVId == long.MaxValue)
                             {
-                                playlist.Items.Add(new M3UItem
+                                var items = await FilterHelper.DoFilter(playlistItems, m.Filters);
+                                var padding = (items.Count() - 1).ToString().Length;
+                                for (var j = 0; j < items.Count; j++)
                                 {
-                                    Url = playlistItem.Url,
-                                    Data = [
-                                        new M3UItemData { Key = "tvg-id", Value = previous.ToString() },
-                                        new M3UItemData { Key = "tvg-name", Value = m.Name },
-										new M3UItemData { Key = "group-title", Value = m.Category },
-										new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
-                                        new M3UItemData { Key = "tvg-chno", Value = previous.ToString() },
-                                        new M3UItemData { Key = "TrackTitle", Value = m.Name }
-                                    ]
-                                });
+                                    var m3uItem = items[j];
+                                    var channelid = $"{m.Id}.{j}";
+                                    var title = DummyChannel.GetTitleOutput(m3uItem.ToString(), m);
+                                    if (m.DummyMapping.IncludeBlank || !string.IsNullOrWhiteSpace(title))
+                                    {
+                                        var chno = j + 1;
+                                        var chnoString = chno.ToString();
+                                        while (chnoString.Length < padding)
+                                        {
+                                            chnoString = "0" + chnoString;
+                                        }
+                                        var chname = $"{m.Name} {chnoString}";
+                                        var icon = m3uItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty;
+                                        var channelname = string.Empty;
+                                        playlist.Items.Add(new M3UItem
+                                        {
+                                            Url = m3uItem.Url,
+                                            Data = [
+                                                new M3UItemData { Key = "tvg-id", Value = channelid },
+                                                new M3UItemData { Key = "tvg-name", Value = chname },
+                                                new M3UItemData { Key = "group-title", Value = m.Category },
+                                                new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? m3uItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
+                                                new M3UItemData { Key = "tvg-chno", Value = (previous++).ToString() },
+                                                new M3UItemData { Key = "TrackTitle", Value = chname }
+                                            ]
+                                        });
+                                    }
+                                }
+                            }
+                            else if (m?.XMLTVItem != null)
+                            {
+                                var playlistItem = (await FilterHelper.DoFilter(playlistItems, m.Filters))?.FirstOrDefault();
+                                if (playlistItem != null)
+                                {
+                                    playlist.Items.Add(new M3UItem
+                                    {
+                                        Url = playlistItem.Url,
+                                        Data = [
+                                            new M3UItemData { Key = "tvg-id", Value = m.Id.ToString() },
+                                            new M3UItemData { Key = "tvg-name", Value = m.Name },
+                                            new M3UItemData { Key = "group-title", Value = m.Category },
+                                            new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
+                                            new M3UItemData { Key = "tvg-chno", Value = (previous++).ToString() },
+                                            new M3UItemData { Key = "TrackTitle", Value = m.Name }
+                                        ]
+                                    });
+                                }
                             }
                         }
                     }
@@ -149,39 +190,57 @@ namespace IPTVRelay.Blazor
         }
         public static class XMLTV
         {
-            public static void Merge(string content, Database.Models.XMLTV guide, out List<XMLTVItem> removed, out List<XMLTVItem> added)
+            public static async Task<Database.Models.XMLTV?> Update(IConfiguration config, IPTVRelayContext DB, long id, string? content = null)
             {
-                removed = new List<XMLTVItem>();
-                added = new List<XMLTVItem>();
+                var guide = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings)
+                    .FirstOrDefaultAsync(g => g.Id == id);
+                if (guide == null) return null;
 
-                var items = XMLTVParser.Parse(content).GetAwaiter().GetResult();
-                var dict = items.ToDictionary(i => i.ChannelId, i => i);
-                for (var i = 0; i < guide.Items.Count; i++)
+                if (content == null)
                 {
-                    if (!dict.ContainsKey(guide.Items[i].ChannelId))
+                    content = await Populate(config, guide, refresh: true);
+                }
+                if (content == null) return null;
+                var items = await Library.XMLTVParser.Parse(content);
+                if (items == null) return null;
+
+                var existingItems = guide.Items.Where(i => !string.IsNullOrWhiteSpace(i.ChannelId)).GroupBy(i => i.ChannelId!, i => i).ToDictionary(g => g.Key, g => g.ToList());
+                var pendingItems = items.GroupBy(i => i.ChannelId, i => i).Where(i => !string.IsNullOrWhiteSpace(i.Key)).Select(g => g.First()).ToDictionary(i => i.ChannelId!, i => i);
+                var newItems = pendingItems.Values.Where(i => !existingItems.ContainsKey(i.ChannelId!)).ToList();
+                var missingItems = existingItems.Where(i => !pendingItems.ContainsKey(i.Key!)).ToList();
+
+                var duplicateItems = existingItems.Where(g => g.Value.Count > 1)
+                    .Select(g => g.Value.OrderByDescending(i => i.Mappings.Count()).ThenByDescending(i => i.Id))
+                    .Select(g => new { Primary = g.First(), Duplicates = g.Skip(1).ToList() });
+
+                foreach (var d in duplicateItems)
+                {
+                    foreach (var duplicate in d.Duplicates)
                     {
-                        removed.Add(guide.Items[i]);
-                        guide.Items.RemoveAt(i);
-                        i--;
-                    }
-                    else
-                    {
-                        items[i].Data.AddRange(dict[items[i].ChannelId].Data);
+                        var mappings = duplicate.Mappings;
+                        duplicate.Mappings.Clear();
+                        foreach (var m in mappings)
+                        {
+                            m.XMLTVItemId = d.Primary.Id;
+                            d.Primary.Mappings.Add(m);
+                        }
+                        DB.Remove(duplicate);
+                        guide.Items.Remove(duplicate);
                     }
                 }
-                dict = guide.Items.ToDictionary(i => i.ChannelId, i => i);
-                for (var i = 0; i < items.Count; i++)
+
+                foreach (var newItem in newItems)
                 {
-                    if (!dict.ContainsKey(items[i].ChannelId))
-                    {
-                        guide.Items.Add(items[i]);
-                        added.Add(items[i]);
-                    }
-                    else
-                    {
-                        items[i].Data.AddRange(dict[items[i].ChannelId].Data);
-                    }
+                    newItem.XMLTVId = guide.Id;
+                    guide.Items.Add(newItem);
                 }
+
+                var file = Utility.XMLTV.GetFileInfo(config, guide);
+                File.WriteAllText(file.FullName, content);
+
+                await DB.SaveChangesAsync();
+
+                return guide;
             }
 
             public static FileInfo GetFileInfo(IConfiguration config, Database.Models.XMLTV guide)
@@ -203,8 +262,9 @@ namespace IPTVRelay.Blazor
 
                 return fileInfo;
             }
-            public static async Task<string> Populate(IConfiguration config, Database.Models.XMLTV guide, bool refresh = false, bool applyFilters = true)
+            public static async Task<string?> Populate(IConfiguration config, Database.Models.XMLTV guide, bool refresh = false, bool applyFilters = true)
             {
+                if (guide.Id == long.MaxValue) return null;
                 var file = GetFileInfo(config, guide);
                 if (!file.Exists) { refresh = true; }
                 if (refresh)
@@ -265,17 +325,14 @@ namespace IPTVRelay.Blazor
                 var programmingXml = new List<string>();
 
 
-                var playlists = new Dictionary<long, List<M3UItem>>();
+                var playlists = new Dictionary<long, Database.Models.M3U>();
                 var guides = new Dictionary<long, XmlDocument>();
 
-                long previous = 0;
                 foreach (var g in mappings.GroupBy(m => m.Channel))
                 {
                     var list = g.OrderBy(g => g.Name).ToArray();
-                    var start = Math.Max(g.Key, previous);
                     for (long i = 0; i < list.LongLength; i++)
                     {
-                        previous = g.Key + i;
                         var m = list[i];
                         if (m != null)
                         {
@@ -286,29 +343,98 @@ namespace IPTVRelay.Blazor
                                 Console.WriteLine($"Something Went wrong with {m.Name}: {m.XMLTVItem?.ChannelId}");
                                 continue;
                             }
-                            if (id.HasValue && !guides.ContainsKey(id.Value))
+                            List<string>? channelNodes = [];
+                            List<string>? programmesNodes = [];
+                            if (id == long.MaxValue)
                             {
-                                var xml = await Populate(config, new Database.Models.XMLTV { Id = id.Value });
-                                doc.LoadXml(xml);
-                                guides[id.Value] = doc;
+                                Database.Models.M3U m3u;
+                                if (m.M3UId.HasValue && !playlists.ContainsKey(m.M3UId.Value))
+                                {
+                                    m3u = await M3U.Populate(config, new Database.Models.M3U { Id = m.M3UId.Value });
+                                    playlists[id.Value] = m3u;
+                                }
+                                else
+                                {
+                                    m3u = playlists[m.M3UId.Value];
+                                }
+
+                                var items = await FilterHelper.DoFilter(m3u.Items, m.Filters);
+                                var padding = (items.Count() - 1).ToString().Length;
+
+                                for (var j = 0; j < items.Count; j++)
+                                {
+                                    var m3uItem = items[j];
+                                    var channelid = $"{m.Id}.{j}";
+
+                                    var title = DummyChannel.GetTitleOutput(m3uItem.ToString(), m);
+                                    var start = DummyChannel.GetTimeOutput(m3uItem.ToString(), m.TimeOffsetSpan, m);
+
+                                    if (m.DummyMapping.IncludeBlank || start.HasValue)
+                                    {
+                                        var chno = j + 1;
+                                        var chnoString = chno.ToString();
+                                        while (chnoString.Length < padding)
+                                        {
+                                            chnoString = "0" + chnoString;
+                                        }
+                                        var chname = $"{m.Name} {chnoString}";
+                                        var icon = m3uItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty;
+
+                                        channelNodes.Add(@$"<channel id=""{channelid}""><display-name>{chname}</display-name><icon src=""{icon}"" height=""270"" width=""360""></icon></channel>");
+
+                                    }
+                                    var pastdate = $"{DateTime.Today.AddDays(-1):yyyyMMddHHmm00 +0000}";
+                                    var futuredate = $"{DateTime.Today.AddDays(2):yyyyMMddHHmm00 +0000}";
+                                    var offair = $"Off Air";
+                                    if (!string.IsNullOrWhiteSpace(title) && start.HasValue)
+                                    {
+                                        var local = new DateTime(start.Value.Year, start.Value.Month, start.Value.Day, start.Value.Hour, start.Value.Minute, 0, DateTimeKind.Local);
+                                        var utc = local.ToUniversalTime();
+
+                                        var startdate = $"{utc:yyyyMMddHHmm00 +0000}";
+                                        var duration = 30;
+                                        _ = int.TryParse(m?.XMLTVItem?.ChannelId?.Replace("Dummy.", string.Empty), out duration);
+                                        var enddate = $"{utc.AddMinutes(duration):yyyyMMddHHmm00 +0000}";
+
+                                        programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{pastdate}"" stop=""{startdate}""><title lang=""en"">{$"{offair} until {local:hh:mm} - {title}"}</title></programme>");
+                                        programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{startdate}"" stop=""{enddate}""><title lang=""en"">{title}</title></programme>");
+                                        programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{enddate}"" stop=""{futuredate}""><title lang=""en"">{offair}</title></programme>");
+                                    }
+                                    else if (m.DummyMapping.IncludeBlank)
+                                    {
+                                        programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{pastdate}"" stop=""{futuredate}""><title lang=""en"">{offair}</title></programme>");
+                                    }
+                                }
                             }
-                            else
+                            else if (m?.XMLTVItem != null)
                             {
-                                doc = guides[id.Value];
+                                if (id.HasValue && !guides.ContainsKey(id.Value))
+                                {
+                                    var xml = await Populate(config, new Database.Models.XMLTV { Id = id.Value });
+                                    doc.LoadXml(xml);
+                                    guides[id.Value] = doc;
+                                }
+                                else
+                                {
+                                    doc = guides[id.Value];
+                                }
+
+                                var element = (doc.SelectSingleNode($"/tv/channel[@id=\"{m.XMLTVItem.ChannelId}\"]") as XmlElement);
+                                element?.SetAttribute("id", m.Id.ToString());
+
+                                channelNodes.Add(element?.OuterXml);
+                                programmesNodes.AddRange(doc.SelectNodes($"/tv/programme[@channel=\"{m.XMLTVItem.ChannelId}\"]").Cast<XmlElement>().Select(n =>
+                                {
+                                    n.SetAttribute("channel", m.Id.ToString());
+                                    return n.OuterXml;
+                                }));
                             }
-
-                            var channelNode = doc.SelectSingleNode($"/tv/channel[@id=\"{m.XMLTVItem.ChannelId}\"]") as XmlElement;
-                            var programmesNodes = doc.SelectNodes($"/tv/programme[@channel=\"{m.XMLTVItem.ChannelId}\"]");
-
-
-                            channelNode.SetAttribute("id", previous.ToString());
-
-                            channelsXml.Add(channelNode.OuterXml);
-                            programmingXml.AddRange(programmesNodes.Cast<XmlElement>().Select(n =>
+                            if (channelNodes != null && programmesNodes != null)
                             {
-                                n.SetAttribute("channel", previous.ToString());
-                                return n.OuterXml;
-                            }));
+
+                                channelsXml.AddRange(channelNodes);
+                                programmingXml.AddRange(programmesNodes);
+                            }
 
 
                         }
@@ -328,6 +454,132 @@ namespace IPTVRelay.Blazor
             }
         }
 
+        public static class DummyChannel
+        {
+            static readonly string[] MINUTE = new[] { "m", "mm" };
+            static readonly string[] HOUR = new[] { "H", "HH", "h", "hh" };
+            static readonly string[] AMPM = new[] { "t", "tt" };
+            static readonly string[] DAY = new[] { "d", "dd" };
+            static readonly string[] MONTH = new[] { "M", "MM", "MMM", "MMMM" };
+            static readonly string[] YEAR = new[] { "y", "yy", "yyyy" };
+
+            public static Match? CheckExpression(string expression, string value)
+            {
+                try
+                {
+                    var match = Regex.Match(value, expression, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+                    if (match.Success)
+                    {
+                        return match;
+                    }
+                }
+                catch { }
+                return null;
+            }
+            public static DateTime? GetTimeOutput(string input, TimeSpan offset, Mapping mapping)
+            {
+                var match = CheckExpression(mapping.DummyMapping.TimeExpression, input);
+                if (match?.Success ?? false)
+                {
+                    var formatParts = new List<string>();
+                    var valueParts = new List<string>();
+
+                    var date = new[] { YEAR, MONTH, DAY, }.Reverse();
+                    var anyfound = false;
+                    foreach (var group in date)
+                    {
+                        var found = false;
+                        foreach (var key in group)
+                        {
+                            if (match?.Groups?.ContainsKey(key) ?? false)
+                            {
+                                formatParts.Add(key);
+                                valueParts.Add(match!.Groups[key].Value);
+                                found = true;
+                                anyfound = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            formatParts.Add(group.First());
+                            valueParts.Add(DateTime.Now.ToString($"%{group.First()}", CultureInfo.CurrentCulture));
+                        }
+                    }
+                    var time = new[] { HOUR, MINUTE, AMPM };
+                    foreach (var group in time)
+                    {
+                        foreach (var key in group)
+                        {
+                            if (match.Groups.TryGetValue(key, out var g) && g.Success && !string.IsNullOrWhiteSpace(g.Value))
+                            {
+                                formatParts.Add(key);
+                                valueParts.Add(match!.Groups[key].Value);
+                                anyfound = true;
+                                break;
+                            }
+                        }
+                    }
+                    if(!anyfound) return null;
+                    var value = string.Join(" ", valueParts);
+                    var format = string.Join(" ", formatParts);
+
+                    if (DateTime.TryParseExact(value, format, CultureInfo.CurrentCulture, DateTimeStyles.None, out var datetime))
+                    {
+                        var actual = datetime.Add(offset);
+                        return actual;
+                    }
+                }
+                return null;
+            }
+            public static string? GetTitleOutput(string input, Mapping mapping)
+            {
+                try
+                {
+                    var match = CheckExpression(mapping.DummyMapping.TitleExpression, input);
+                    if (match?.Success ?? false)
+                    {
+                        var output = mapping.DummyMapping.TitleFormat ?? string.Empty;
+                        var matches = Regex.Matches(output, @"(?<!{){(?!={)(?<key>[^{}]+)(?<!})}(?!=})", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase).ToList().OrderByDescending(m => m.Index);
+
+                        foreach (var m in matches)
+                        {
+                            if (m.Success)
+                            {
+                                var value = m.Value;
+                                var key = m.Groups["key"].Value;
+
+                                string? replaceValue = null;
+                                if (int.TryParse(key, out var index))
+                                {
+                                    if (index < match.Groups.Count)
+                                    {
+                                        replaceValue = match.Groups[index].Value;
+                                    }
+                                }
+                                else
+                                {
+                                    if (match.Groups.ContainsKey(key))
+                                    {
+                                        replaceValue = match.Groups[key].Value;
+                                    }
+                                }
+                                if (replaceValue is not null)
+                                {
+                                    output = output.Remove(m.Index, value.Length);
+                                    output = output.Insert(m.Index, replaceValue);
+                                }
+                            }
+                        }
+
+                        return output;
+                    }
+                }
+                catch { }
+                return null;
+            }
+        }
+
         public static class Jobs
         {
             public class UpdateJob
@@ -344,46 +596,29 @@ namespace IPTVRelay.Blazor
                 public async Task Update()
                 {
                     {
-                        var playlists = await DB.M3U.Include(p => p.Filters).ToListAsync();
+                        var playlists = await DB.M3U.Include(p => p.Filters).AsNoTracking().ToListAsync();
 
                         await Task.WhenAll(playlists.Where(p => p.ParentId.GetValueOrDefault() == 0).Select(p => PopulateM3URecursive(p, playlists)));
 
                         await DB.SaveChangesAsync();
                     }
                     DB.ChangeTracker.Clear();
+                    GC.Collect();
                     {
-                        var guides = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).ToListAsync();
+                        var guides = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).AsNoTracking().ToListAsync();
                         foreach (var guide in guides)
                         {
-                            Database.Models.XMLTV newGuide = new();
-                            string content = string.Empty;
-                            try
-                            {
-                                content = await XMLTV.Populate(Config, guide, refresh: true, applyFilters: true);
-                                newGuide.Items = await XMLTVParser.Parse(content);
-                            }
-                            catch { continue; }
-                            var removed = guide.Items.Except(newGuide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
-                            var added = newGuide.Items.Except(guide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
-
-                            if (removed.Any() || added.Any())
-                            {
-                                guide.Items.RemoveAll(i => removed.Any(r => r.ChannelId == i.ChannelId));
-                                DB.RemoveRange(removed);
-                                guide.Items.AddRange(added);
-                                added.ForEach(a => a.XMLTVId = guide.Id);
-                                await DB.SaveChangesAsync();
-                            }
-
-                            await XMLTV.WriteToDisk(Config, guide, content);
+                            await XMLTV.Update(Config, DB, guide.Id);
                         }
                     }
                     DB.ChangeTracker.Clear();
+                    GC.Collect();
                     {
                         var mappings = await DB.Mapping
                             .Include(m => m.XMLTVItem)
                             .Include(m => m.M3U)
                             .Include(m => m.Filters)
+                            .Include(m => m.DummyMapping)
                             .OrderBy(m => m.Channel).ThenBy(m => m.Name)
                             .AsNoTracking().ToListAsync();
 
@@ -391,7 +626,7 @@ namespace IPTVRelay.Blazor
                         await XMLTV.Generate(Config, mappings);
                     }
                     DB.ChangeTracker.Clear();
-
+                    GC.Collect();
                 }
                 private async Task PopulateM3URecursive(Database.Models.M3U playlist, List<Database.Models.M3U> playlists)
                 {

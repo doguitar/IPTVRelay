@@ -31,8 +31,7 @@
         <div class="col-md-12">
             <div class="float-end">
                 <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
-                <Button Color="BlazorBootstrap.ButtonColor.Primary" @onclick=@Save Disabled="!CanSave">Save</Button>
-                <Button Color="BlazorBootstrap.ButtonColor.Danger" @onclick=@Cancel >Cancel</Button>
+                <CloseButton OnClick="Cancel" Disabled="!CanSave"></CloseButton>
             </div>
         </div>
     </div>
@@ -44,7 +43,7 @@
         {
             var canSave = false;
             await SetLoading();
-            Content = await Utility.XMLTV.Populate(Config, Model);
+            Content = await Utility.XMLTV.Populate(Config, Model, refresh: true);
             if (Content != null)
             {
                 var items = await XMLTVParser.Parse(Content);
@@ -61,6 +60,7 @@
 
     public override async Task Save()
     {
+        if (Content == null) await GetUri();
         await OnSave.InvokeAsync(new XMLTVEventArgs(Model, Content));
     }
     public override async Task Cancel()
@@ -70,19 +70,9 @@
     public override async Task Load()
     {
         await SetLoading();
-        Model = await DB.XMLTV.FirstOrDefaultAsync(m => m.Id == ModelId) ?? new XMLTV();
-        if (Model.Id > 0)
-        {
-            Content = await Utility.XMLTV.Populate(Config, Model);
-            if (Content != null)
-            {
-                var items = await XMLTVParser.Parse(Content);
-                if(items != null)
-                {
-                    Model.Items = items;
-                }
-            }
-        }
+        Content = null;
+        Model = await DB.XMLTV.AsNoTracking().Include(x => x.Items).FirstOrDefaultAsync(m => m.Id == ModelId) ?? new XMLTV();
+        CanSave = false;
         await SetLoaded();
     }
 }
