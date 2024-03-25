@@ -3,7 +3,7 @@
     "http": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "http://localhost:8080",
+      "launchUrl": "http://127.0.0.1:8080",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "IPTV_DATA_FOLDER": "../../../data/",
@@ -11,7 +11,7 @@
       },
       "dotnetRunMessages": true,
       "inspectUri": "{wsProtocol}://{url.hostname}:{url.port}/_framework/debug/ws-proxy?browser={browserInspectUri}",
-      "applicationUrl": "http://localhost:8080",
+      "applicationUrl": "http://127.0.0.1:8080",
       "hotReloadEnabled": true
     },
     "https": {

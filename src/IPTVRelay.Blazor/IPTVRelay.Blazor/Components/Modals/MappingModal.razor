@@ -3,6 +3,18 @@
 
 @code {
 
+    protected class FilteredItem
+    {
+        public M3UItem? Item;
+        public bool Filtered;
+        public bool Previewing;
+
+        public override string ToString()
+        {
+            return Item?.ToString() ?? string.Empty;
+        }
+    }
+
     private List<XMLTV> Guides { get; set; } = [];
     private List<M3U> Playlists { get; set; } = [];
 
@@ -89,7 +101,16 @@
                                     </div>
                                 }
                             </div>
+                            @if (!(fi?.Previewing ?? true))
+                            {
+                                <PlayButton OnClick="(()=>fi.Previewing = !fi.Previewing)"></PlayButton>
+                            }
+                            else
+                            {
+                                <PreviewModal M3UItem="fi?.Item"></PreviewModal>
+                            }
                         </Filter>
+
                     }
                 }
             }

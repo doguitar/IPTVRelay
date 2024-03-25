@@ -4,7 +4,8 @@ ARG UID
 ARG PID
 ARG UMASK
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS base
+RUN apt-get update && apt-get install -y ffmpeg && apt-get clean && rm -rf /var/lib/apt/lists/*
 USER app
 WORKDIR /app
 EXPOSE 8080
@@ -30,6 +31,7 @@ ENV IPTV_PORT="8080"
 ENV UID=$UID
 ENV PID=$PID
 ENV UMASK=$UMASK
+
 
 FROM base AS final
 WORKDIR /app
