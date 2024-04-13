@@ -1,4 +1,5 @@
-﻿@inherits BaseComponent
+﻿@using System.Web
+@inherits BaseComponent
 @inject NavigationManager Nav
 @inject IJSRuntime JS;
 @code {
@@ -9,14 +10,15 @@
         get { return _m3uItem; }
         set { _m3uItem = value; if (value != null) Reload = true; }
     }
-    private string? StreamUri;
-    private bool Reload;
+    private string? StreamUri { get; set; }
+    private bool Reload { get; set; }
 }
 
-@if (!IsLoading && !string.IsNullOrWhiteSpace(StreamUri))
+@if (!IsLoading && !string.IsNullOrEmpty(StreamUri))
 {
     <div>test</div>
     <video width="100%" controls autoplay id=@($"videopreview{M3UItem.Created.Ticks}")>
+        <source src="@(HttpUtility.HtmlEncode(StreamUri))" type="video/webm" />
         Your browser does not support the video tag.
     </video>
 }
@@ -77,12 +79,13 @@
                         var masterPlaylist = new FileInfo(Path.Combine(outputDir.FullName, "preview.m3u8"));
                         File.WriteAllLines(masterPlaylist.FullName, new[]
                         {
-                        new Uri(baseUri, $"preview/{filename}.m3u8").ToString()
-                    });
+                            new Uri(baseUri, $"preview/{filename}.m3u8").ToString()
+                        });
 
-                        StreamUri = new Uri(baseUri, $"output/preview.m3u8?apikey={apiKey?.Value}").ToString();
+                        StreamUri = new Uri(baseUri, $"preview/{filename}.m3u8?apikey={apiKey?.Value}").ToString();
                         await SetLoaded();
                         await JS.InvokeVoidAsync("previewVideo", new[] { $"videopreview{M3UItem.Created.Ticks}", new Uri(baseUri, $"preview/{filename}.m3u8").ToString() });
+                        await InvokeAsync(StateHasChanged);
                     }
                 }
             }

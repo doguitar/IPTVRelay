@@ -24,7 +24,7 @@ namespace IPTVRelay.Library
         //-hls_segment_filename "temp/bde14159333577fbc961d9a1a2c94baf%d.ts" -y "temp/bde14159333577fbc961d9a1a2c94baf.m3u8"
 
         static Process? RunningProcess = null;
-        static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1,1);
+        static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         public static async Task<Process> RehostStream(string input, string output, TimeSpan? timeout = null)
         {
             timeout ??= TimeSpan.FromMinutes(1);
@@ -49,10 +49,14 @@ namespace IPTVRelay.Library
                 ffmpeg.ErrorDataReceived += (s, e) => Console.WriteLine(e.Data);
 
                 ffmpeg.Start();
+                RunningProcess = ffmpeg;
                 ffmpeg.BeginOutputReadLine();
                 ffmpeg.BeginErrorReadLine();
-                ffmpeg.PriorityClass = ProcessPriorityClass.RealTime;
-                RunningProcess = ffmpeg;
+                try
+                {
+                    ffmpeg.PriorityClass = ProcessPriorityClass.RealTime;
+                }
+                catch { }
             }
             finally { _semaphore.Release(); }
             var killAction = new Action(() => KillProcess(RunningProcess?.Id, output));
@@ -81,7 +85,7 @@ namespace IPTVRelay.Library
                     }
                 }
             }
-            if(filePrefix != null)
+            if (filePrefix != null)
             {
                 var files = System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(filePrefix), $"{System.IO.Path.GetFileName(filePrefix)}*");
                 foreach (var file in files)
