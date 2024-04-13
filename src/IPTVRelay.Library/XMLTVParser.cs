@@ -49,7 +49,7 @@ namespace IPTVRelay.Library
                             {
                                 item.Data = items;
                             }
-                            bag.AddOrUpdate(id, item, (key, x) => { x.Data.AddRange(item.Data); return x; });
+                            bag.AddOrUpdate(id, item, (key, x) => { x.Data = [.. x.Data, .. item.Data]; return x; });
 
                             var url = c?.SelectSingleNode("icon")?.Attributes?.GetNamedItem("src")?.Value;
                             if (url != null)

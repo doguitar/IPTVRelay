@@ -107,6 +107,7 @@
             .FirstOrDefaultAsync(g => g.Id == args.Model.Id);
         if (guide == null)
         {
+            args.Model.Id = await DB.XMLTV.Where(x => x.Id < long.MaxValue).Select(x => x.Id).MaxAsync() + 1;
             await DB.AddAsync(args.Model);
             await DB.SaveChangesAsync();
             guide = args.Model;
