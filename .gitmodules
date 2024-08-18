@@ -1,0 +1,3 @@
+[submodule "updogg"]
+	path = updogg
+	url = https://github.com/doguitar/updogg.git
