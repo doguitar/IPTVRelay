@@ -15,13 +15,16 @@ namespace IPTVRelay.Database.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.1");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.4");
+
+            modelBuilder.HasSequence<int>("Ids");
 
             modelBuilder.Entity("IPTVRelay.Database.Models.M3U", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValueSql("nextval('\"Ids\"')");
 
                     b.Property<long>("Count")
                         .HasColumnType("INTEGER");
@@ -55,7 +58,8 @@ namespace IPTVRelay.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValueSql("nextval('\"Ids\"')");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
@@ -89,7 +93,8 @@ namespace IPTVRelay.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValueSql("nextval('\"Ids\"')");
 
                     b.Property<string>("Category")
                         .HasColumnType("TEXT");
@@ -128,7 +133,8 @@ namespace IPTVRelay.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValueSql("nextval('\"Ids\"')");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
@@ -162,7 +168,8 @@ namespace IPTVRelay.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValueSql("nextval('\"Ids\"')");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
@@ -194,7 +201,8 @@ namespace IPTVRelay.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValueSql("nextval('\"Ids\"')");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
@@ -220,7 +228,8 @@ namespace IPTVRelay.Database.Migrations
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValueSql("nextval('\"Ids\"')");
 
                     b.Property<string>("ChannelId")
                         .HasColumnType("TEXT");

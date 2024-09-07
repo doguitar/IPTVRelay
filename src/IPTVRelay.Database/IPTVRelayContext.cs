@@ -5,6 +5,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace IPTVRelay.Database
 {
@@ -64,40 +66,50 @@ namespace IPTVRelay.Database
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.HasSequence<int>("Ids")
+                .StartsAt(1)
+                .IncrementsBy(1);
 
             modelBuilder.Entity<Models.M3U>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
+                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
             modelBuilder.Entity<Models.M3UFilter>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
+                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
                 e.HasIndex(m => m.M3UId);
             });
 
             modelBuilder.Entity<Models.XMLTV>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
+                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
             modelBuilder.Entity<Models.XMLTVItem>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
+                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
                 e.HasIndex(m => m.XMLTVId);
             });
 
             modelBuilder.Entity<Models.Mapping>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
+                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
             modelBuilder.Entity<Models.MappingFilter>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
+                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
                 e.HasIndex(m => m.MappingId);
             });
 
             modelBuilder.Entity<Models.Setting>(e =>
             {
                 e.HasIndex(m => m.Id).IsUnique();
+                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
 
 

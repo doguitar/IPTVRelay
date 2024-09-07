@@ -1,6 +1,5 @@
 using Hangfire;
 using Hangfire.Storage.SQLite;
-using IPTVRelay.Blazor.Client.Pages;
 using IPTVRelay.Blazor.Components;
 using IPTVRelay.Database;
 using IPTVRelay.Database.Enums;
@@ -57,7 +56,8 @@ namespace IPTVRelay.Blazor
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
-                .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
+                //.AddAdditionalAssemblies(typeof(Client._Imports).Assembly)
+                ;
 
             using (var scope = app.Services.CreateScope())
             {

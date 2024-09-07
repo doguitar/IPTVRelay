@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
+using Npgsql;
 
 namespace IPTVRelay.Database
 {
@@ -16,6 +17,37 @@ namespace IPTVRelay.Database
         public IPTVRelayContextFactory(DbContextOptions<IPTVRelayContext> options)
         {
             _options = options;
+        }
+        public IPTVRelayContextFactory(IPTVRelayDbConfig iptvconfig)
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<IPTVRelayContext>();
+            if (iptvconfig.Provider == DbProvider.Psql)
+            {
+                optionsBuilder.UseNpgsql(
+                   new NpgsqlConnectionStringBuilder
+                   {
+                       Host = iptvconfig.PsqlConfig.Host,
+                       Port = iptvconfig.PsqlConfig.Port,
+                       Username = iptvconfig.PsqlConfig.Username,
+                       Password = iptvconfig.PsqlConfig.Password,
+                       Database = iptvconfig.PsqlConfig.Database
+                   }.ConnectionString,
+                   x => x.MigrationsAssembly(Constants.PSQL_MIGRATIONS))
+               ;
+
+            }
+            else if (iptvconfig.Provider == DbProvider.Sqlite)
+            {
+                optionsBuilder.UseSqlite(
+                    new SqliteConnectionStringBuilder
+                    {
+                        Mode = SqliteOpenMode.ReadWriteCreate,
+                        DataSource = iptvconfig.SqliteConfig.Path
+                    }.ConnectionString,
+
+                x => x.MigrationsAssembly(Constants.SQLITE_MIGRATIONS));
+            }
+            _options = optionsBuilder.Options;
         }
 
         public IPTVRelayContext CreateDbContext()

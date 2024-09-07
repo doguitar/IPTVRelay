@@ -127,8 +127,8 @@ namespace IPTVRelay.Blazor
                                     Data = [
                                         new M3UItemData { Key = "tvg-id", Value = previous.ToString() },
                                         new M3UItemData { Key = "tvg-name", Value = m.Name },
-										new M3UItemData { Key = "group-title", Value = m.Category },
-										new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
+                                        new M3UItemData { Key = "group-title", Value = m.Category },
+                                        new M3UItemData { Key = "tvg-logo", Value = m.XMLTVItem?.Logo ?? playlistItem.Data.FirstOrDefault(d => d.Key == "tvg-logo")?.Value ?? string.Empty },
                                         new M3UItemData { Key = "tvg-chno", Value = previous.ToString() },
                                         new M3UItemData { Key = "TrackTitle", Value = m.Name }
                                     ]
@@ -363,8 +363,8 @@ namespace IPTVRelay.Blazor
                                 newGuide.Items = await XMLTVParser.Parse(content);
                             }
                             catch { continue; }
-                            var removed = guide.Items.Except(newGuide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
-                            var added = newGuide.Items.Except(guide.Items, (x, y) => x.ChannelId == y.ChannelId, x => x.ChannelId.GetHashCode()).ToList();
+                            var removed = guide.Items.ExceptBy(newGuide.Items.Select(i => i.ChannelId), i => i.ChannelId).ToList();
+                            var added = newGuide.Items.ExceptBy(guide.Items.Select(i => i.ChannelId), x => x.ChannelId).ToList();
 
                             if (removed.Any() || added.Any())
                             {

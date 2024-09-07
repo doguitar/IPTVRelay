@@ -80,19 +80,19 @@ namespace IPTVRelay.Library
                     line.TryDequeue(out _);
                     if (key.StartsWith(',') && line.Count == 0)
                     {
-                        data.Add("TrackTitle", key.Substring(1));
+                        data.TryAdd("TrackTitle", key.Substring(1));
                     }
                     else if (line.TryPeek(out var peeked) && peeked == '"')
                     {
                         line.TryDequeue(out _);
                         var value = ReadUntil(line, c => c == '"', '\\');
                         line.TryDequeue(out _);
-                        data.Add(key, value);
+                        data.TryAdd(key, value);
                     }
                     else
                     {
                         var value = ReadUntil(line, c => c == ' ');
-                        data.Add(key, value);
+                        data.TryAdd(key, value);
 
                     }
                     _ = ReadUntil(line, c => c != ' ');

@@ -15,6 +15,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Blazor.Client", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Library.Components", "IPTVRelay.Library.Components\IPTVRelay.Library.Components.csproj", "{605349ED-4B09-40B7-A529-83887E555F9E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B548C581-7898-4561-9DC3-BACB05D381FD}"
+	ProjectSection(SolutionItems) = preProject
+		..\global.json = ..\global.json
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Database.Sqlite", "IPTVRelay.Database.Sqlite\IPTVRelay.Database.Sqlite.csproj", "{9263E7CA-B95E-4AEB-8167-767376C11D9E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Database.Npgsql", "IPTVRelay.Database.Npgsql\IPTVRelay.Database.Npgsql.csproj", "{ABE8016F-0CE7-4A88-8003-BCF27A190D0F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Updogg.Extensions", "..\updogg\src\Updogg.Extensions\Updogg.Extensions.csproj", "{8F01BC2D-032A-41E3-A128-D29E9216F32D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +56,18 @@ Global
 		{605349ED-4B09-40B7-A529-83887E555F9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{605349ED-4B09-40B7-A529-83887E555F9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{605349ED-4B09-40B7-A529-83887E555F9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9263E7CA-B95E-4AEB-8167-767376C11D9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9263E7CA-B95E-4AEB-8167-767376C11D9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9263E7CA-B95E-4AEB-8167-767376C11D9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9263E7CA-B95E-4AEB-8167-767376C11D9E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABE8016F-0CE7-4A88-8003-BCF27A190D0F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABE8016F-0CE7-4A88-8003-BCF27A190D0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABE8016F-0CE7-4A88-8003-BCF27A190D0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABE8016F-0CE7-4A88-8003-BCF27A190D0F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F01BC2D-032A-41E3-A128-D29E9216F32D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F01BC2D-032A-41E3-A128-D29E9216F32D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F01BC2D-032A-41E3-A128-D29E9216F32D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F01BC2D-032A-41E3-A128-D29E9216F32D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

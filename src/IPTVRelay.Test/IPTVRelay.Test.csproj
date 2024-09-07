@@ -23,11 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\IPTVRelay.Library\IPTVRelay.Library.csproj" />
+    <Folder Include="data\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="data\" />
+    <ProjectReference Include="..\IPTVRelay.Library\IPTVRelay.Library.csproj" />
   </ItemGroup>
 
   <ItemGroup>
