@@ -404,3 +404,6 @@ FodyWeavers.xsd
 /data
 **/.*.yml
 /dockerdata
+/src/IPTVRelay.Blazor/IPTVRelay.Blazor/appsettings.Debug.json
+/src/IPTVRelay.Blazor/IPTVRelay.Blazor/appsettings.Debug.Npgsql.json
+/src/IPTVRelay.Blazor/IPTVRelay.Blazor/appsettings.Debug.Sqlite.json
