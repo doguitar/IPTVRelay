@@ -1,13 +1,18 @@
+using CommandLine;
 using Hangfire;
 using Hangfire.Storage.SQLite;
 using IPTVRelay.Blazor.Components;
+using IPTVRelay.Blazor.Configuration;
 using IPTVRelay.Database;
 using IPTVRelay.Database.Enums;
+using IPTVRelay.Database.Psql;
+using IPTVRelay.Database.Sqlite;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
+using Npgsql;
+using System.Xml.Linq;
 
 namespace IPTVRelay.Blazor
 {
@@ -17,20 +22,87 @@ namespace IPTVRelay.Blazor
         {
             var configBuilder = new ConfigurationBuilder();
             configBuilder.AddEnvironmentVariables("IPTV_");
-            var config = (IConfiguration)configBuilder.Build();
-            var dataDirectory = new DirectoryInfo(config.GetValue<string>("DATA_FOLDER"));
+
+            var config = new IPTVConfig();
+            Parser.Default.ParseArguments(() => config, args);
+
+
+            configBuilder.Build().Bind(config, o =>
+            {
+                o.ErrorOnUnknownConfiguration = false;
+                o.BindNonPublicProperties = true;
+            });
+
+            var configDirectory = new DirectoryInfo(config.ConfigFolder);
+            if (configDirectory.Exists)
+            {
+                foreach (var file in configDirectory.GetFiles("*.json").OrderByDescending(f => f.FullName.Length))
+                {
+                    configBuilder.AddJsonFile(file.FullName);
+                }
+            }
+            Parser.Default.ParseArguments(() => config, args);
+
+            configBuilder.Build().Bind(config, o =>
+            {
+                o.ErrorOnUnknownConfiguration = false;
+                o.BindNonPublicProperties = true;
+            });
+
+            var dataDirectory = new DirectoryInfo(config.DataFolder);
             if (!dataDirectory.Exists) dataDirectory.Create();
+
 
             var builder = WebApplication.CreateBuilder(args);
 
+            var hangireDb = Path.Combine(dataDirectory.FullName, "hangfire.db");
+
             builder.Services
-                .AddHangfire(c => c.UseSQLiteStorage(Path.Combine(dataDirectory.FullName, "scheduler.db")))
-                .AddDbContext<IPTVRelayContext>(options => options.UseSqlite(new SqliteConnectionStringBuilder { DataSource = Path.Combine(dataDirectory.FullName, "IPTVRelay.db") }.ToString()))
+                .AddHangfire(config => config.UseSQLiteStorage(hangireDb,
+                new SQLiteStorageOptions
+                {
+                    AutoVacuumSelected = SQLiteStorageOptions.AutoVacuum.INCREMENTAL,
+                    Prefix = "hangfire:"
+                }))
+                .AddHangfireServer()
                 .AddSingleton(config)
                 .AddBlazorBootstrap()
                 .AddRazorComponents()
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
+
+            switch (config.DbConfig.Provider)
+            {
+                case DbProvider.Psql:
+                    builder.Services.AddDbContext<IPTVRelayContext, IPTVRelayNpgsqlContext>(options =>
+                    {
+                        options.UseNpgsql(
+                            new NpgsqlConnectionStringBuilder
+                            {
+                                Host = config.DbConfig.PsqlConfig.Host,
+                                Port = config.DbConfig.PsqlConfig.Port,
+                                Username = config.DbConfig.PsqlConfig.Username,
+                                Password = config.DbConfig.PsqlConfig.Password,
+                                Database = config.DbConfig.PsqlConfig.Database
+                            }.ConnectionString,
+                            x => x.MigrationsAssembly(Constants.PSQL_MIGRATIONS));
+                    });
+                    break;
+                case DbProvider.Sqlite:
+                    builder.Services.AddDbContext<IPTVRelayContext, IPTVRelaySqliteContext>(options =>
+                    {
+                        options.UseSqlite(
+                            new SqliteConnectionStringBuilder
+                            {
+                                DataSource = Path.Combine(dataDirectory.FullName, config.DbConfig.SqliteConfig.Path)
+                            }.ConnectionString,
+                            x => x.MigrationsAssembly(Constants.SQLITE_MIGRATIONS));
+                    });
+                    break;
+
+                default:
+                    break;
+            }
 
 
             var app = builder.Build();
@@ -51,7 +123,7 @@ namespace IPTVRelay.Blazor
             app.UseStaticFiles();
             app.UseAntiforgery();
 
-            app.UseHangfireServer();
+            // app.UseHangfireServer(); // Remove this line
 
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()
@@ -64,11 +136,8 @@ namespace IPTVRelay.Blazor
                 var db = scope.ServiceProvider.GetRequiredService<IPTVRelayContext>();
                 db.Database.Migrate();
 
-                if (int.TryParse(config.GetValue<string>("PORT"), out var port))
-                {
-                    app.Urls.Clear();
-                    app.Urls.Add($"http://*:{port}");
-                }
+                app.Urls.Clear();
+                app.Urls.Add($"http://{config.Host}:{config.Port}");
 
                 var settings = await db.Setting.ToDictionaryAsync(s => s.Name, s => s.Value);
                 settings.TryGetValue(SettingType.UPDATE_CRON.ToString(), out var updateCron);

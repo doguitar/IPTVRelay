@@ -70,6 +70,7 @@ namespace IPTVRelay.Library
                 case "http":
                 case "https":
                     HttpClient client = new HttpClient();
+                    client.Timeout = TimeSpan.FromMinutes(5);
                     var result = await client.GetAsync(uri);
                     return new HttpUriClientResponse(result);
                 case "file":

@@ -1,5 +1,6 @@
 ﻿using IPTVRelay.Blazor.Components.Pages;
 using IPTVRelay.Blazor.Components.Shared;
+using IPTVRelay.Blazor.Configuration;
 using IPTVRelay.Database;
 using IPTVRelay.Database.Models;
 using IPTVRelay.Library;
@@ -17,9 +18,9 @@ namespace IPTVRelay.Blazor
     {
         public static class M3U
         {
-            public static FileInfo GetFileInfo(IConfiguration config, Database.Models.M3U playlist)
+            public static FileInfo GetFileInfo(IPTVConfig config, Database.Models.M3U playlist)
             {
-                var dataFolder = config.GetValue<string>("DATA_FOLDER");
+                var dataFolder = config.DataFolder;
 
                 var dir = new DirectoryInfo(dataFolder);
                 if (!dir.Exists)
@@ -36,7 +37,7 @@ namespace IPTVRelay.Blazor
 
                 return fileInfo;
             }
-            public static async Task<Database.Models.M3U> Populate(IConfiguration config, Database.Models.M3U playlist, bool refresh = false, bool applyFilters = true)
+            public static async Task<Database.Models.M3U> Populate(IPTVConfig config, Database.Models.M3U playlist, bool refresh = false, bool applyFilters = true)
             {
                 var file = GetFileInfo(config, playlist);
                 if (!file.Exists) { refresh = true; }
@@ -63,7 +64,7 @@ namespace IPTVRelay.Blazor
 
                 return playlist;
             }
-            public static async Task<FileInfo> WriteToDisk(IConfiguration config, Database.Models.M3U playlist)
+            public static async Task<FileInfo> WriteToDisk(IPTVConfig config, Database.Models.M3U playlist)
             {
                 var file = GetFileInfo(config, playlist);
                 await WriteToDisk(file, playlist);
@@ -79,9 +80,9 @@ namespace IPTVRelay.Blazor
             {
                 playlist.Items = await FilterHelper.DoFilter(playlist.Items, playlist.Filters);
             }
-            public static async Task<FileInfo> Generate(IConfiguration config, List<Database.Models.Mapping> mappings)
+            public static async Task<FileInfo> Generate(IPTVConfig config, List<Database.Models.Mapping> mappings)
             {
-                var dataFolder = config.GetValue<string>("DATA_FOLDER");
+                var dataFolder = config.DataFolder;
 
                 var dir = new DirectoryInfo(dataFolder);
                 if (!dir.Exists)
@@ -184,9 +185,9 @@ namespace IPTVRelay.Blazor
                 }
             }
 
-            public static FileInfo GetFileInfo(IConfiguration config, Database.Models.XMLTV guide)
+            public static FileInfo GetFileInfo(IPTVConfig config, Database.Models.XMLTV guide)
             {
-                var dataFolder = config.GetValue<string>("DATA_FOLDER");
+                var dataFolder = config.DataFolder;
 
                 var dir = new DirectoryInfo(dataFolder);
                 if (!dir.Exists)
@@ -203,7 +204,7 @@ namespace IPTVRelay.Blazor
 
                 return fileInfo;
             }
-            public static async Task<string> Populate(IConfiguration config, Database.Models.XMLTV guide, bool refresh = false, bool applyFilters = true)
+            public static async Task<string> Populate(IPTVConfig config, Database.Models.XMLTV guide, bool refresh = false, bool applyFilters = true)
             {
                 var file = GetFileInfo(config, guide);
                 if (!file.Exists) { refresh = true; }
@@ -216,7 +217,7 @@ namespace IPTVRelay.Blazor
                     return await XMLTVParser.Parse(new Uri($"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
                 }
             }
-            public static async Task<FileInfo> WriteToDisk(IConfiguration config, Database.Models.XMLTV guide, string content)
+            public static async Task<FileInfo> WriteToDisk(IPTVConfig config, Database.Models.XMLTV guide, string content)
             {
                 var file = GetFileInfo(config, guide);
                 await File.WriteAllTextAsync(file.FullName, content);
@@ -244,9 +245,9 @@ namespace IPTVRelay.Blazor
                 }
                 return items;
             }
-            public static async Task<FileInfo> Generate(IConfiguration config, List<Database.Models.Mapping> mappings)
+            public static async Task<FileInfo> Generate(IPTVConfig config, List<Database.Models.Mapping> mappings)
             {
-                var dataFolder = config.GetValue<string>("DATA_FOLDER");
+                var dataFolder = config.DataFolder;
 
                 var dir = new DirectoryInfo(dataFolder);
                 if (!dir.Exists)
@@ -332,10 +333,10 @@ namespace IPTVRelay.Blazor
         {
             public class UpdateJob
             {
-                IConfiguration Config;
+                IPTVConfig Config;
                 IPTVRelayContext DB;
 
-                public UpdateJob(IConfiguration config, IPTVRelayContext db)
+                public UpdateJob(IPTVConfig config, IPTVRelayContext db)
                 {
                     Config = config;
                     DB = db;

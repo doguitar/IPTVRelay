@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CommandLine;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -27,6 +29,9 @@ namespace IPTVRelay.Database
 
     public record IPTVRelayDbConfig
     {
+        const string PROVIDERS = $"{nameof(DbProvider.Sqlite)}, {nameof(DbProvider.Psql)}";
+
+        [Option("provider", Required = false, HelpText = $"DB Provider Type ({PROVIDERS})")]
         public DbProvider Provider { get; set; } = DbProvider.Sqlite;
 
         [ConfigurationKeyName("Psql")]
@@ -41,16 +46,22 @@ namespace IPTVRelay.Database
         Sqlite
     }
 
-    public class IPTVRelayPsqlConfig
+    public record IPTVRelayPsqlConfig
     {
+        [Option("psqlhost", Required = false, HelpText = "Postgres Host")]
         public string Host { get; set; } = "localhost";
+        [Option("psqlport", Required = false, HelpText = "Postgres Port")]
         public int Port { get; set; } = 5432;
+        [Option("psqldb", Required = false, HelpText = "Postgres Database")]
         public string Database { get; set; } = "iptvrelay";
+        [Option("psqluser", Required = false, HelpText = "Postgres Username")]
         public string Username { get; set; } = "iptvrelay";
+        [Option("psqlpass", Required = false, HelpText = "Postgres Password")]
         public string Password { get; set; } = "iptvrelay";
     }
-    public class IPTVRelaySqliteConfig
+    public record IPTVRelaySqliteConfig
     {
+        [Option("sqlitepath", Required = false, HelpText = "Sqlite Path")]
         public string Path { get; set; } = "iptvrelay.db";
     }
 

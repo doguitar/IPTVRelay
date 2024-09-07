@@ -10,7 +10,7 @@
 @using Microsoft.EntityFrameworkCore.Query;
 
 @using IPTVRelay.Blazor
-
+@using IPTVRelay.Blazor.Configuration;
 @using IPTVRelay.Blazor.Components
 @using IPTVRelay.Blazor.Components.Shared
 
@@ -23,5 +23,7 @@
 
 @using EnumsNET;
 
-@inject IConfiguration Config;
+@using Updogg;
+
+@inject IPTVConfig Config;
 @inject IPTVRelay.Database.IPTVRelayContext DB;

@@ -1,25 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
-using Npgsql.EntityFrameworkCore.PostgreSQL;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace IPTVRelay.Database
 {
-    public class IPTVRelayContext : DbContext
+
+    public abstract class IPTVRelayContext : DbContext
     {
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            base.OnConfiguring(optionsBuilder);
-        }
-
-        public IPTVRelayContext(DbContextOptions<IPTVRelayContext> options)
-            : base(options)
+        public IPTVRelayContext(DbContextOptions options)
+           : base(options)
         {
         }
 
@@ -64,56 +52,73 @@ namespace IPTVRelay.Database
         public DbSet<Models.MappingFilter> MappingFilter { get; set; }
         public DbSet<Models.Setting> Setting { get; set; }
 
+        protected abstract void SetAutoNumberForPrimaryKey(PropertyBuilder primaryKey);
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.HasSequence<int>("Ids")
-                .StartsAt(1)
-                .IncrementsBy(1);
-
             modelBuilder.Entity<Models.M3U>(e =>
             {
+                SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
+
                 e.HasIndex(m => m.Id).IsUnique();
-                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
             modelBuilder.Entity<Models.M3UFilter>(e =>
             {
+                SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
+
                 e.HasIndex(m => m.Id).IsUnique();
-                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
                 e.HasIndex(m => m.M3UId);
             });
-
             modelBuilder.Entity<Models.XMLTV>(e =>
             {
+                SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
+
                 e.HasIndex(m => m.Id).IsUnique();
-                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
             modelBuilder.Entity<Models.XMLTVItem>(e =>
             {
+                SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
+                
                 e.HasIndex(m => m.Id).IsUnique();
-                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
                 e.HasIndex(m => m.XMLTVId);
             });
-
             modelBuilder.Entity<Models.Mapping>(e =>
             {
+                SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
+
                 e.HasIndex(m => m.Id).IsUnique();
-                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
             modelBuilder.Entity<Models.MappingFilter>(e =>
             {
+                SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
+
                 e.HasIndex(m => m.Id).IsUnique();
-                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
                 e.HasIndex(m => m.MappingId);
             });
-
             modelBuilder.Entity<Models.Setting>(e =>
             {
+                SetAutoNumberForPrimaryKey(e.Property(m => m.Id));
+
                 e.HasIndex(m => m.Id).IsUnique();
-                e.Property(m => m.Id).HasDefaultValueSql("nextval('\"Ids\"')");
             });
 
-
             base.OnModelCreating(modelBuilder);
+        }
+    }
+
+    public abstract class IPTVRelayContext<T, O> : IPTVRelayContext
+        where O : DbContextOptions<T>
+        where T : IPTVRelayContext<T, O>
+    {
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            base.OnConfiguring(optionsBuilder);
+        }
+
+        public IPTVRelayContext(O options)
+            : base(options)
+        {
         }
     }
 

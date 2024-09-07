@@ -1,0 +1,1 @@
+dotnet ef migrations remove --project .\IPTVRelay.Database.Sqlite\ --context IPTVRelaySqliteContext

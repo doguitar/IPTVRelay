@@ -5,7 +5,7 @@
     private string? Content { get; set; }
 }
 
-<Loader IsLoading=@(IsLoading || Model is null)>
+<Loader IsLoading=@(IsLoading || Model.IsNull())>
 
     <div class="row">
         <div class="col-md-12">
@@ -69,18 +69,23 @@
     public override async Task Load()
     {
         await SetLoading();
-        Model = await DB.XMLTV.FirstOrDefaultAsync(m => m.Id == ModelId) ?? new XMLTV();
-        if (Model.Id > 0)
+
+        if (ModelId > 0)
         {
+            Model = await DB.XMLTV.FirstOrDefaultAsync(m => m.Id == ModelId) ?? new XMLTV();
             Content = await Utility.XMLTV.Populate(Config, Model);
             if (Content != null)
             {
                 var items = await XMLTVParser.Parse(Content);
-                if(items != null)
+                if (items != null)
                 {
                     Model.Items = items;
                 }
             }
+        }
+        else
+        {
+            Model = new XMLTV();
         }
         await SetLoaded();
     }
