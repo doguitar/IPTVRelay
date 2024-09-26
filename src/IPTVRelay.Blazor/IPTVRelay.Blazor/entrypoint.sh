@@ -1,4 +1,5 @@
 #!/bin/bash
 
 umask $UMASK
-dotnet IPTVRelay.Blazor.dll
+cp -n /app/appsettings.json /data/appsettings.json
+dotnet IPTVRelay.Blazor.dll -c /data

@@ -25,6 +25,9 @@ namespace IPTVRelay.Database
 
         public const string PSQL_MIGRATIONS = $"{nameof(IPTVRelay)}.{nameof(Database)}.{nameof(DbProvider.Psql)}";
         public const string SQLITE_MIGRATIONS = $"{nameof(IPTVRelay)}.{nameof(Database)}.{nameof(DbProvider.Sqlite)}";
+
+        public const string DUMMY_MAPPING = "Dummy";
+
     }
 
     public record IPTVRelayDbConfig

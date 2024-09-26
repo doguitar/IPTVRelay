@@ -13,7 +13,8 @@ namespace IPTVRelay.Database.Psql
         protected override void SetAutoNumberForPrimaryKey(PropertyBuilder primaryKey)
         {
             primaryKey
-                .UseIdentityAlwaysColumn();
+                .UseIdentityAlwaysColumn()
+                .HasColumnType("bigint");
         }
     }
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Xml;
 using IPTVRelay.Database.Models;
 using Microsoft.Extensions.Options;
+using Updogg;
 
 namespace IPTVRelay.Library
 {
@@ -32,7 +33,6 @@ namespace IPTVRelay.Library
             var bag = new ConcurrentDictionary<string, XMLTVItem>();
             if ((channels?.Count > 0))
             {
-
                 await Task.WhenAll(
                     channels.OfType<XmlNode>().Select(c => Task.Run(() =>
                     {
@@ -47,7 +47,7 @@ namespace IPTVRelay.Library
 
                             if (items?.Count > 0)
                             {
-                                item.Data = items;
+                                item.Data = items.Where(kv=>!kv.Value.IsNullOrWhiteSpace()).ToList();
                             }
                             bag.AddOrUpdate(id, item, (key, x) => { x.Data.AddRange(item.Data); return x; });
 

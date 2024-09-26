@@ -16,7 +16,7 @@
 	}
 
 	private TFilter Current = new() { Invert = true, FilterType = Database.Enums.FilterType.Contains };
-	[Parameter] public List<TItem> Items { get; set; }
+	[Parameter] public List<TItem>? Items { get; set; }
 	[Parameter] public List<FilterView<TItem>>? FilteredItems { get; set; } = null;
 	[Parameter] public RenderFragment<FilterView<TItem>>? ChildContent { get; set; }
 	[Parameter] public List<TFilter> Filters { get; set; } = [];
@@ -128,6 +128,9 @@
 	public async Task TestFilter(TFilter filter)
 	{
 		await SetLoading();
+		if(FilteredItems.IsNull()) {
+			SetItems(Items);
+		}
 		var filtered = await Library.FilterHelper.DoFilter(FilteredItems, filter);
 		await FilteredItems.Except(filtered).ParallelForEachAsync(i => i.Filtered = true);
 		await filtered.ParallelForEachAsync(i => i.Filtered = false);
@@ -137,6 +140,10 @@
 	public async Task ApplyFilter(TFilter filter)
 	{
 		await SetLoading();
+		if (FilteredItems.IsNull())
+		{
+			SetItems(Items);
+		}
 		Filters.Add(filter);
 		FilteredItems = await Library.FilterHelper.DoFilter(FilteredItems, filter);
 		await SetLoaded();

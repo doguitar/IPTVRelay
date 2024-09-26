@@ -40,19 +40,17 @@
         <div class="row">
             <div class="col-md-12">
                 <h4>Filters</h4>
-                <Filter @ref="FilterControl" TFilter="M3UFilter" TItem="M3UItem" Filters="Filters">
+                <Filter @ref="FilterControl" TFilter="M3UFilter" TItem="M3UItem" Filters="Filters" Items="Model?.Items">
                     @if (preview)
                     {
                         var c = context.Item;
-            <tr class="@(string.Join(" ", new [] {context.Filtered? "filtered" : string.Empty}))">
-                <td style="white-space:nowrap;">@(c.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? c.Url)</td>
-                <td style="white-space:nowrap; overflow-x:scroll; width:100%">@c.ToString()</td>
-            </tr>
-
+                        <tr class="@(string.Join(" ", new [] {context.Filtered? "filtered" : string.Empty}))">
+                            <td style="white-space:nowrap;">@(c.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? c.Url)</td>
+                            <td style="white-space:nowrap; overflow-x:scroll; width:100%">@c.ToString()</td>
+                        </tr>
                     }
-        </Filter>
-
-        </div>
+                </Filter>
+            </div>
         </div>
 
     }
@@ -83,12 +81,12 @@
     public override async Task Load()
     {
         Model = await DB.M3U.Include(p => p.Filters).FirstOrDefaultAsync(p => p.Id == ModelId) ?? new M3U();
-        Filters = Model.Filters;
         if (Model.Id > 0)
         {
             await Utility.M3U.Populate(Config, Model, applyFilters: true);
-            FilterControl.SetItems(Model.Items);
         }
+        await InvokeAsync(StateHasChanged);
+
     }
     public async Task GetUri()
     {
