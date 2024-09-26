@@ -67,7 +67,11 @@ namespace IPTVRelay.Library
             });
             return RunningProcess;
         }
-
+        public static Task StopStream()
+        {
+            KillProcess(RunningProcess?.Id);
+            return Task.CompletedTask;
+        }
         private static void KillProcess(int? processId, string? filePrefix = null)
         {
             if (processId.HasValue)

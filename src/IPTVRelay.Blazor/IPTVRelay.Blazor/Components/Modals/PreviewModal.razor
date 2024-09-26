@@ -16,7 +16,6 @@
 
 @if (!IsLoading && !string.IsNullOrEmpty(StreamUri))
 {
-    <div>test</div>
     <video width="100%" controls autoplay id=@($"videopreview{M3UItem.Created.Ticks}")>
         <source src="@(HttpUtility.HtmlEncode(StreamUri))" type="video/webm" />
         Your browser does not support the video tag.
@@ -24,9 +23,7 @@
 }
 
 @code {
-
     protected override async Task OnParametersSetAsync()
-
     {
         await Load();
     }
