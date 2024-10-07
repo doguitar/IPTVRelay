@@ -24,20 +24,21 @@ namespace IPTVRelay.Library.Components
 				builder.OpenElement(2, "div");
 				builder.AddAttribute(1, "class", "loading-spinner-message");
 				builder.AddContent(3, LoadingMessage);
+				if (HideContents)
+				{
+					builder.OpenElement(0, "div");
+					builder.AddAttribute(1, "style", "display: none;");
+					base.BuildRenderTree(builder);
+					builder.AddContent(3, ChildContent);
+					builder.CloseElement();
+				}
 				builder.CloseElement();
 				builder.CloseElement();
 			}
-			if (HideContents)
+			else
 			{
-				builder.OpenElement(0, "div");
-				builder.AddAttribute(1, "style", "display: none;");
-			}
-			base.BuildRenderTree(builder);
-			builder.AddContent(3, ChildContent);
-
-			if (HideContents)
-			{
-				builder.CloseElement();
+				base.BuildRenderTree(builder);
+				builder.AddContent(3, ChildContent);
 			}
 		}
 

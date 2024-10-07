@@ -14,8 +14,8 @@
         public string? Uri;
         public string? Name;
     }
+    private ObservableCollection<M3UView>? playlists;
 
-    private List<M3UView>? playlists;
     private Modal modal = default!;
 }
 
@@ -47,9 +47,10 @@
             </RowButtons>
         </Table>
     }
-    <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" ShowCloseButton="false" HeaderCssClass="hidden" />
+    <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" ShowCloseButton="false" HeaderCssClass="hidden"  />
 </Loader>
 @code {
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
@@ -62,7 +63,9 @@
     protected async Task Load()
     {
         await SetLoading();
-        playlists = await DB.M3U.OrderBy(m => m.Created).Select(m => new M3UView { Id = m.Id, Name = m.Name, Uri = m.Parent != null ? $"Parent: {m.Parent.Name}" : m.Uri, Count = m.Count }).AsNoTracking().ToListAsync();
+        playlists = await DB.M3U.OrderBy(m => m.Created)
+                        .Select(m => new M3UView { Id = m.Id, Name = m.Name, Uri = m.Parent != null ? $"Parent: {m.Parent.Name}" : m.Uri, Count = m.Count })
+                        .AsNoTracking().ToListAsync().ToObservableAsync();
         await SetLoaded();
     }
 
@@ -75,14 +78,14 @@
     }
     protected async Task Child(long playlistId, string name)
     {
-        var file = Utility.M3U.GetFileInfo(Config, new M3U { Id = playlistId });
+        var file = M3uUtility.GetFileInfo(new M3U { Id = playlistId });
         var playlist = new M3U { ParentId = playlistId, Uri = $"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}", Name = $"{name} - Child" };
         await DB.M3U.AddAsync(playlist);
         await DB.SaveChangesAsync();
 
         if (playlist != null)
         {
-            await modal.ShowAsync<PlaylistModal>("Add Playlist",
+            await modal.ShowAsync<PlaylistModal>("Edit Playlist",
             parameters: new Dictionary<string, object> {
             { nameof(PlaylistModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<M3U>>(this, Edited) },
             { nameof(PlaylistModal.OnCancel), EventCallback.Factory.Create(this, async ()=> await modal.HideAsync()) },
@@ -114,14 +117,15 @@
 
     public async void Added(ModalEventArgs<M3U> args)
     {
+        await SetLoading();
         var playlist = args.Model;
         await modal.HideAsync();
         if (playlist != null)
         {
-            await DB.AddAsync(playlist);
+            await DB.M3U.AddAsync(playlist);
             await DB.SaveChangesAsync();
 
-            var file = Utility.M3U.GetFileInfo(Config, playlist);
+            var file = M3uUtility.GetFileInfo(playlist);
             var content = await Library.M3UParser.Create(playlist.Items);
             File.WriteAllText(file.FullName, content.ToString());
         }
@@ -129,14 +133,15 @@
     }
     public async void Edited(ModalEventArgs<M3U> args)
     {
+        await SetLoading();
         var playlist = args.Model;
         await modal.HideAsync();
         if (playlist != null)
         {
-            DB.Attach(playlist);
+            DB.M3U.Attach(playlist);
             await DB.SaveChangesAsync();
 
-            var file = Utility.M3U.GetFileInfo(Config, playlist);
+            var file = M3uUtility.GetFileInfo(playlist);
             var content = await Library.M3UParser.Create(playlist.Items);
             File.WriteAllText(file.FullName, content.ToString());
         }

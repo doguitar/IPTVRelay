@@ -1,42 +1,37 @@
-# syntax=docker/dockerfile:1
+#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-FROM ghcr.io/linuxserver/baseimage-ubuntu:jammy
- 
-# arguments
-ARG BUILD_DATE
-ARG VERSION
-ARG IPTVRELAY_RELEASE
-ARG BUILD_CONFIGURATION
 
-# set version label
-LABEL build_version="version:- ${VERSION} Build-date:- ${BUILD_DATE}"
-LABEL maintainer="doguitar"
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+USER app
+WORKDIR /app
+EXPOSE 8080
 
-# environment settings
-ARG DEBIAN_FRONTEND="noninteractive"
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ./updogg/src/Updogg.Extensions/ /src/updogg/src/Updogg.Extensions/
+COPY ./src /src/iptvrelay/
 
-RUN \
-  echo "**** install jellyfin *****" && \
-  curl -s https://repo.jellyfin.org/ubuntu/jellyfin_team.gpg.key | gpg --dearmor | tee /usr/share/keyrings/jellyfin.gpg >/dev/null && \
-  echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/jellyfin.gpg] https://repo.jellyfin.org/ubuntu jammy main' > /etc/apt/sources.list.d/jellyfin.list && \
-  if [ -z ${JELLYFIN_RELEASE+x} ]; then \
-    JELLYFIN_RELEASE=$(curl -sX GET https://repo.jellyfin.org/ubuntu/dists/jammy/main/binary-amd64/Packages |grep -A 7 -m 1 'Package: jellyfin-server' | awk -F ': ' '/Version/{print $2;exit}'); \
-  fi && \
-  apt-get update && \
-  apt-get install -y --no-install-recommends \
-    at \
-    jellyfin=${JELLYFIN_RELEASE} \
-    mesa-va-drivers \
-    xmlstarlet && \
-  echo "**** cleanup ****" && \
-  rm -rf \
-    /tmp/* \
-    /var/lib/apt/lists/* \
-    /var/tmp/*
+WORKDIR /src/iptvrelay/
 
-# add local files
-COPY root/ / 
+RUN dotnet restore
+RUN dotnet build "IPTVRelay.Blazor/IPTVRelay.Blazor.csproj" -c "$BUILD_CONFIGURATION" -o "/app/build" /nologo /clp:ErrorsOnly
 
-# ports and volumes
-EXPOSE 8096 8920
-VOLUME /config
+FROM build AS publish
+RUN dotnet publish "IPTVRelay.Blazor/IPTVRelay.Blazor.csproj" -c "$BUILD_CONFIGURATION" -o "/app/publish" /p:UseAppHost=false /nologo /clp:ErrorsOnly
+RUN ls -lah /app/publish
+FROM base AS final
+
+ENV IPTV_CONFIGFOLDER="/data/"
+ENV IPTV_DATAFOLDER="/data/"
+ENV IPTV_PORT="8080"
+ENV UID=99
+ENV PID=100
+ENV UMASK=022
+
+WORKDIR /app
+COPY --from=build "/src/iptvrelay/IPTVRelay.Blazor/entrypoint.sh" "/app"
+COPY --from=publish /app/publish/* .
+USER root
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]

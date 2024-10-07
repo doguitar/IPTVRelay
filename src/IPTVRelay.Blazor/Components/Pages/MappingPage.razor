@@ -13,7 +13,7 @@
 		public bool Filtered;
 	}
 
-	private List<Database.Models.Mapping>? Mappings { get; set; }
+	private ObservableCollection<Database.Models.Mapping>? Mappings { get; set; }
 
 	private Modal modal = default!;
 
@@ -55,6 +55,7 @@
 </Loader>
 <Modal @ref="modal" IsScrollable="true" Size="ModalSize.Large" HeaderCssClass="hidden" />
 @code {
+
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		await base.OnAfterRenderAsync(firstRender);
@@ -67,7 +68,9 @@
 	protected async Task Load()
 	{
 		await SetLoading();
-		Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync();
+
+		Mappings = await DB.Mapping.Include(m => m.XMLTVItem).OrderBy(m => m.Channel).ThenBy(m => m.Created).ToListAsync().ToObservableAsync();
+
 		await SetLoaded();
 	}
 

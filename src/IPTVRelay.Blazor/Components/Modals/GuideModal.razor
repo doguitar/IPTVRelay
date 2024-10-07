@@ -4,7 +4,6 @@
 @code {
     private string? Content { get; set; }
 }
-
 <Loader IsLoading=@(IsLoading || Model.IsNull())>
 
     <div class="row">
@@ -36,6 +35,7 @@
         </div>
     </div>
 </Loader>
+
 @code {
     protected async Task GetUri()
     {
@@ -43,7 +43,7 @@
         {
             var canSave = false;
             await SetLoading();
-            Content = await Utility.XMLTV.Populate(Config, Model);
+            Content = await XmlTvUtility.Populate(Model);
             if (Content != null)
             {
                 var items = await XMLTVParser.Parse(Content);
@@ -73,7 +73,7 @@
         if (ModelId > 0)
         {
             Model = await DB.XMLTV.FirstOrDefaultAsync(m => m.Id == ModelId) ?? new XMLTV();
-            Content = await Utility.XMLTV.Populate(Config, Model);
+            Content = await XmlTvUtility.Populate(Model);
             if (Content != null)
             {
                 var items = await XMLTVParser.Parse(Content);

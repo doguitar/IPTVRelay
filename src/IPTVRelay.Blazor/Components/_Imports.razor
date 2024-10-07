@@ -1,18 +1,21 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
+@using System.Collections.ObjectModel
+
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Microsoft.JSInterop
-@using Microsoft.EntityFrameworkCore;
-@using Microsoft.EntityFrameworkCore.Query;
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore.Query
 
 @using IPTVRelay.Blazor
-@using IPTVRelay.Blazor.Configuration;
+@using IPTVRelay.Blazor.Configuration
 @using IPTVRelay.Blazor.Components
 @using IPTVRelay.Blazor.Components.Shared
+@using IPTVRelay.Blazor.ViewModels
 
 @using IPTVRelay.Database.Models
 
@@ -21,9 +24,11 @@
 
 @using BlazorBootstrap
 
-@using EnumsNET;
+@using EnumsNET
 
-@using Updogg;
+@using Updogg
 
-@inject IPTVConfig Config;
-@inject IPTVRelay.Database.IPTVRelayContext DB;
+@inject IPTVConfig Config
+@inject IPTVRelay.Database.IPTVRelayContext DB
+@inject IPTVRelay.Blazor.Utility.M3uUtility M3uUtility
+@inject IPTVRelay.Blazor.Utility.XmlTvUtility XmlTvUtility

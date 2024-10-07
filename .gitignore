@@ -406,4 +406,4 @@ FodyWeavers.xsd
 /dockerdata
 /src/IPTVRelay.Blazor/IPTVRelay.Blazor/appsettings.*.json
 /src/data
-/src/IPTVRelay.Blazor/ /data
+/src/IPTVRelay.Blazor/data

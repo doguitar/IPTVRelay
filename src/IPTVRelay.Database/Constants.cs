@@ -38,10 +38,10 @@ namespace IPTVRelay.Database
         public DbProvider Provider { get; set; } = DbProvider.Sqlite;
 
         [ConfigurationKeyName("Psql")]
-        public IPTVRelayPsqlConfig PsqlConfig { get; } = new();
+        public IPTVRelayPsqlConfig PsqlConfig { get; set; } = new();
 
         [ConfigurationKeyName("Sqlite")]
-        public IPTVRelaySqliteConfig SqliteConfig { get; } = new();
+        public IPTVRelaySqliteConfig SqliteConfig { get; set; } = new();
     }
     public enum DbProvider
     {

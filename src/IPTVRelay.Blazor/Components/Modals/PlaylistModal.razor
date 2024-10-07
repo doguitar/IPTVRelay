@@ -1,0 +1,150 @@
+﻿@inherits BaseModal<M3U>
+
+@code {
+
+
+    public class M3UView
+    {
+        public long Id;
+        public long Count;
+        public string? Uri;
+        public string? Name;
+
+        public ObservableCollection<M3UItem> Items = new();
+        public ObservableCollection<FilterVM> Filters = new();
+        public List<FilterItemVM<M3UItem>> FilteredItems = new();
+    }
+
+    public M3UView ViewModel { get; set; } = new();
+    private bool preview { get; set; }
+}
+
+<Loader IsLoading="@IsLoading">
+    @if (Model != null)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="input-group mb-3">
+                    <InputText class="form-control" placeholder="Name" aria-label="Name" aria-describedby="basic-addon2" @bind-Value=Model.Name></InputText>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="input-group mb-3">
+                    <InputText disabled="@(Model.ParentId > 0)" class="form-control" placeholder="M3U Location" aria-label="M3U Location" aria-describedby="basic-addon2" @bind-Value=Model.Uri></InputText>
+                    <div class="input-group-append">
+                        <Button Color="BlazorBootstrap.ButtonColor.Primary" @onclick=GetUri>Load</Button>
+                    </div>
+                    <div class="input-group-append">
+                        <span class="input-group-text" id="basic-addon2">@(Model?.Count.ToString() ?? string.Empty)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <h4>Filters</h4>
+                <Filter TItem="M3UItem" Items="ViewModel.Items" @bind-Filters="ViewModel.Filters" @bind-FilteredItems="ViewModel.FilteredItems">
+                    @if (preview)
+                    {
+                        var c = context.Item;
+                <tr class="@(string.Join(" ", new [] {context.Filtered? "filtered" : string.Empty}))">
+                    <td style="white-space:nowrap;">@(c.Data.Where(d => d.Key == "TrackTitle")?.FirstOrDefault()?.Value ?? c.Url)</td>
+                    <td style="white-space:nowrap; overflow-x:scroll; width:100%">
+                        @c.ToString()
+                    </td>
+                </tr>
+                    }
+                </Filter>
+            </div>
+        </div>
+
+    }
+    <div class="row">
+        <div class="col-md-12">
+            <div class="float-end">
+                <EyeButton OnClick="Preview"></EyeButton>
+                <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
+                <CloseButton OnClick="Cancel" Disabled="!CanSave"></CloseButton>
+            </div>
+        </div>
+    </div>
+</Loader>
+@code {
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return base.OnAfterRenderAsync(firstRender);
+    }
+    public async Task Preview()
+    {
+        preview = !preview;
+        await InvokeAsync(StateHasChanged);
+    }
+    public override async Task Save()
+    {
+        Model.ThrowIfArgumentNull();
+
+        Model.Items = ViewModel.FilteredItems.Select(v => v.Item!).ToList();
+        Model.Count = Model.Items.LongCount();
+        Model.Filters.RemoveAll(f => !ViewModel.Filters.Any(f2 => f2.Id == f.Id));
+        for (int i = 0; i < ViewModel.Filters.Count; i++)
+        {
+            var f = ViewModel.Filters[i];
+            M3UFilter newfilter;
+            if (f.Id == 0)
+            {
+                newfilter = new M3UFilter
+                    {
+                        FilterContent = f.FilterContent,
+                        FilterType = f.FilterType,
+                        Invert = f.Invert
+                    };
+            }
+            else
+            {
+                newfilter = Model.Filters.First(f2 => f2.Id == f.Id);
+                newfilter.FilterContent = f.FilterContent;
+                newfilter.FilterType = f.FilterType;
+                newfilter.Invert = f.Invert;
+                Model.Filters.Remove(newfilter);
+            }
+            Model.Filters.Insert(i, newfilter);
+        }
+
+        await OnSave.InvokeAsync(new ModalEventArgs<M3U>(Model));
+    }
+    public async Task Load(M3U? model)
+    {
+        var test = DB.M3U.Include(p => p.Filters).ToList();
+        Model = model ?? await DB.M3U.Include(p => p.Filters).FirstOrDefaultAsync(p => p.Id == ModelId) ?? new M3U();
+        if (Model.Id > 0)
+        {
+            await M3uUtility.Populate(Model, applyFilters: true);
+            ViewModel.Items = Model.Items.ToObservable();
+            ViewModel.Filters = Model.Filters.Select(f=>new FilterVM(f)).ToObservable();
+            Model.Count = Model.Items.LongCount();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+    public override Task Load()
+    {
+        return Load(null);
+    }
+
+    public async Task GetUri()
+    {
+        await SetLoading();
+        var canSave = false;
+        await InvokeAsync(StateHasChanged);
+        if (Uri.TryCreate(Model?.Uri, UriKind.Absolute, out var uri))
+        {
+            var model = await M3uUtility.Populate(Model, refresh: true, applyFilters: true);
+            await Load(model);
+            CanSave = true;
+        }
+        CanSave = canSave;
+        await SetLoaded();
+    }
+}

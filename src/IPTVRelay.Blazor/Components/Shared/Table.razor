@@ -8,7 +8,8 @@
     [Parameter] public RenderFragment<TItem>? RowButtons { get; set; }
     [Parameter] public RenderFragment? PostRows { get; set; }
 
-    [Parameter] public List<TItem>? Items { get; set; }
+    [Parameter] public ObservableCollection<TItem> Items { get; set; } = [];
+
 
     [Parameter] public string? Class { get; set; }
 }
@@ -56,3 +57,14 @@
         }
     </tbody>
 </table>
+
+@code{
+    protected override Task OnParametersSetAsync()
+    {
+        if (Items.IsNotNull())
+        {
+            Items.CollectionChanged += (sender, args) => InvokeAsync(StateHasChanged);
+        }
+        return base.OnParametersSetAsync();
+    }
+}

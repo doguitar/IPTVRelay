@@ -26,6 +26,28 @@ namespace IPTVRelay.Blazor
             var config = new IPTVConfig();
             Parser.Default.ParseArguments(() => config, args);
 
+            configBuilder.Build().Bind(config, o =>
+            {
+                o.ErrorOnUnknownConfiguration = false;
+                o.BindNonPublicProperties = true;
+            });
+
+            var baseConfig = "appsettings";
+            var configDirectory = new DirectoryInfo(config.ConfigFolder);
+            if (configDirectory.Exists)
+            {
+                foreach (var file in configDirectory.GetFiles($"{baseConfig}.json"))
+                {
+                    configBuilder.AddJsonFile(file.FullName);
+                }
+#if DEBUG
+                baseConfig = $"{baseConfig}.Debug";
+                foreach (var file in configDirectory.GetFiles($"{baseConfig}.json"))
+                {
+                    configBuilder.AddJsonFile(file.FullName);
+                }
+#endif
+            }
 
             configBuilder.Build().Bind(config, o =>
             {
@@ -33,14 +55,12 @@ namespace IPTVRelay.Blazor
                 o.BindNonPublicProperties = true;
             });
 
-            var configDirectory = new DirectoryInfo(config.ConfigFolder);
-            if (configDirectory.Exists)
+            baseConfig = $"{baseConfig}.{config.DbConfig.Provider}";
+            foreach (var file in configDirectory.GetFiles($"{baseConfig}.json"))
             {
-                foreach (var file in configDirectory.GetFiles("*.json").OrderByDescending(f => f.FullName.Length))
-                {
-                    configBuilder.AddJsonFile(file.FullName);
-                }
+                configBuilder.AddJsonFile(file.FullName);
             }
+
             Parser.Default.ParseArguments(() => config, args);
 
             configBuilder.Build().Bind(config, o =>
@@ -66,6 +86,9 @@ namespace IPTVRelay.Blazor
                 }))
                 .AddHangfireServer()
                 .AddSingleton(config)
+                .AddSingleton<Utility.XmlTvUtility>()
+                .AddSingleton<Utility.M3uUtility>()
+                .AddSingleton<Utility.Jobs>()
                 .AddBlazorBootstrap()
                 .AddRazorComponents()
                 .AddInteractiveServerComponents()
@@ -105,7 +128,11 @@ namespace IPTVRelay.Blazor
             }
 
 
+
             var app = builder.Build();
+
+            app.Urls.Clear();
+            app.Urls.Add($"http://{config.Host}:{config.Port}");
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

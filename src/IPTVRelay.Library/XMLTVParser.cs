@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Text;
 using System.Threading.Channels;
@@ -49,7 +50,12 @@ namespace IPTVRelay.Library
                             {
                                 item.Data = items.Where(kv=>!kv.Value.IsNullOrWhiteSpace()).ToList();
                             }
-                            bag.AddOrUpdate(id, item, (key, x) => { x.Data.AddRange(item.Data); return x; });
+                            bag.AddOrUpdate(id, item, (key, x) => { 
+                                var (larger, smaller) = x.Data.Count > item.Data.Count ? (x,item) : (item, x);
+                                var missing = larger.Data.Select(d => d.Key).Except(smaller.Data.Select(d => d.Key));
+                                larger.Data = [.. larger.Data, .. smaller.Data.Where(d=>missing.Contains(d.Key) )];
+								return larger;                             
+                            });
 
                             var url = c?.SelectSingleNode("icon")?.Attributes?.GetNamedItem("src")?.Value;
                             if (url != null)
