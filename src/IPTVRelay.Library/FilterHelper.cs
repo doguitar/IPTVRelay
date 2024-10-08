@@ -11,44 +11,61 @@ namespace IPTVRelay.Library
 {
     public static class FilterHelper
     {
-        public static async Task<List<M3UItem>> DoFilter<F>(IEnumerable<M3UItem> items, IEnumerable<F> filter) 
+        private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        public static async Task<List<M3UItem>> DoFilter<F>(IEnumerable<M3UItem> items, IEnumerable<F> filter)
             where F : IFilter
         {
-            var filtered = items.ToList();
-            foreach (var f in filter)
+            await _semaphore.WaitAsync();
+            try
             {
-                filtered = await DoFilter(filtered, f);
+                var filtered = items.ToList();
+                foreach (var f in filter)
+                {
+                    filtered = await DoFilter(filtered, f);
+                }
+                return filtered;
             }
-            return filtered;
+            finally
+            {
+                _semaphore.Release();
+            }
         }
         public static async Task<List<M3UItem>> DoFilter(IEnumerable<M3UItem> items, IFilter filter)
         {
-            if (filter.FilterType == Database.Enums.FilterType.Sort)
+            await _semaphore.WaitAsync();
+            try
             {
-                if (string.IsNullOrWhiteSpace(filter.FilterContent))
+                if (filter.FilterType == Database.Enums.FilterType.Sort)
                 {
-                    return items.OrderBy(i => 
-                        i.Data.FirstOrDefault(d=>d.Key == "tvg-name")?.Value ??
-                        i.Data.FirstOrDefault(d => d.Key == "TrackTitle")?.Value ??
-                        new string([(char)byte.MaxValue]))
-                    .ToList();
+                    if (string.IsNullOrWhiteSpace(filter.FilterContent))
+                    {
+                        return items.OrderBy(i =>
+                            i.Data.FirstOrDefault(d => d.Key == "tvg-name")?.Value ??
+                            i.Data.FirstOrDefault(d => d.Key == "TrackTitle")?.Value ??
+                            new string([(char)byte.MaxValue]))
+                        .ToList();
+                    }
+                    else
+                    {
+                        return items.OrderByDescending(i => i.ToString().Contains(filter.FilterContent, StringComparison.InvariantCultureIgnoreCase)).ToList();
+                    }
                 }
                 else
                 {
-                    return items.OrderByDescending(i => i.ToString().Contains(filter.FilterContent, StringComparison.InvariantCultureIgnoreCase)).ToList();
+                    var bag = new ConcurrentBag<(M3UItem, long)>();
+                    await items.ParallelForEachAsync((item, index) =>
+                    {
+                        if (!DoFilter(item, index, items.Count(), filter))
+                        {
+                            bag.Add((item, index));
+                        }
+                    });
+                    return bag.OrderBy(i => i.Item2).Select(i => i.Item1).ToList();
                 }
             }
-            else
+            finally
             {
-                var bag = new ConcurrentBag<(M3UItem, long)>();
-                await items.ParallelForEachAsync((item, index) =>
-                {
-                    if (!DoFilter(item, index, items.Count(), filter))
-                    {
-                        bag.Add((item, index));
-                    }
-                });
-                return bag.OrderBy(i => i.Item2).Select(i => i.Item1).ToList();
+                _semaphore.Release();
             }
         }
 
@@ -67,7 +84,7 @@ namespace IPTVRelay.Library
                     }
                     break;
                 case Database.Enums.FilterType.Regex:
-                    if(context == null || string.IsNullOrWhiteSpace(filter.FilterContent)) return false;
+                    if (context == null || string.IsNullOrWhiteSpace(filter.FilterContent)) return false;
                     var re = new Regex(filter.FilterContent, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
                     if (re.Match(context).Success)
                     {
@@ -95,7 +112,6 @@ namespace IPTVRelay.Library
             }
             return filtered;
         }
-
         private static bool DoFilter(string context, long index, long total, Filter filter)
         {
             if (filter.FilterType == Database.Enums.FilterType.None) return false;
