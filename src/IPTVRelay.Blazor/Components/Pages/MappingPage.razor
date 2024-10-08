@@ -40,6 +40,8 @@
 			<th class="fill">Channel Id</th>
 		</HeaderColumns>
 		<HeaderButtons>
+			<ImportButton OnClick="Import"></ImportButton>
+			<ExportButton OnClick="Export"></ExportButton>
 			<AddButton OnClick=Add></AddButton>
 		</HeaderButtons>
 		<RowColumns>
@@ -74,6 +76,23 @@
 		await SetLoaded();
 	}
 
+	protected async Task Import()
+	{
+		await modal.ShowAsync<MappingModal>("Import Mapping",
+			parameters: new Dictionary<string, object> {
+			{ nameof(MappingModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<Database.Models.Mapping>>(this, Added) },
+			{ nameof(MappingModal.OnCancel), EventCallback.Factory.Create(this, async () => await modal.HideAsync()) },
+			{ nameof(MappingModal.ImportMode), true }});
+
+	}
+
+	protected async Task Export()
+	{
+		//await JS.InvokeVoidAsync("exportChannels");
+	}
+
+
+
 	protected async Task Edit(long id)
 	{
 		await modal.ShowAsync<MappingModal>("Edit Mapping",
@@ -102,6 +121,7 @@
 			{ nameof(MappingModal.MappingId), 0L }});
 
 	}
+
 	public async Task Edited(ModalEventArgs<Database.Models.Mapping> args)
 	{
 		await SetLoading();

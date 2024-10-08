@@ -2,7 +2,6 @@
 @inherits BaseModal<Mapping>
 
 @code {
-
     private bool preview { get; set; }
 
 
@@ -11,9 +10,14 @@
 
     private Dropdown ddlPlaylists = default!;
     private Dropdown ddlGuides = default!;
-    public Shared.Filter<M3UItem> filter = default!;
+    public Shared.Filter filter = default!;
 
     [Parameter] public long MappingId { get; set; }
+    [Parameter] public bool ImportMode { get; set; }
+
+    private MappingImportVM MappingImport { get; set; }
+
+    private string ImportText { get; set; }
 
     private XMLTV? SelectedGuide = null;
     private XMLTVItem? SelectedChannel;
@@ -36,7 +40,12 @@
 <Loader IsLoading=@IsLoading HideContents="true">
     <div class="row">
         <div class="col-md-12">
-            @if (SelectedGuide == null)
+            @if (ImportMode)
+            {
+                <InputTextArea @bind-Value=ImportText></InputTextArea>
+                <ImportButton OnClick="Import"></ImportButton>
+            }
+            else if (SelectedGuide == null)
             {
                 @foreach (var g in Guides)
                 {
@@ -78,10 +87,10 @@
                     else
                     {
                         var i = 0;
-                        <h4>                            
-                            Playlist: <Button @onclick="()=> SelectedPlaylist = null" >@SelectedPlaylist.Name</Button>
+                        <h4>
+                            Playlist: <Button @onclick="()=> SelectedPlaylist = null">@SelectedPlaylist.Name</Button>
                         </h4>
-                        <Filter @ref="filter" TItem="M3UItem" Items="@FilterItems" @bind-Filters="@Filters" @bind-FilteredItems="@FilteredItems">
+                        <Filter @ref="filter" Items="@FilterItems" @bind-Filters="@Filters" @bind-FilteredItems="@FilteredItems">
                             @if (preview)
                             {
                                 var fi = context;
@@ -126,15 +135,13 @@
         }
         guide.Items = items;
         SelectedGuide = guide;
-        if (MappingId > 0)
+
+        var channel = SelectedGuide.Items.Where(i => i.ChannelId == Model?.XMLTVItem?.ChannelId).FirstOrDefault();
+        if (channel != null)
         {
-            var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
-            var channel = SelectedGuide.Items.Where(i => i.ChannelId == mapping?.XMLTVItem?.ChannelId).FirstOrDefault();
-            if (channel != null)
-            {
-                await ChannelSelected(channel);
-            }
+            await ChannelSelected(channel);
         }
+
         await SetLoaded();
     }
     protected async Task ChannelSelected(XMLTVItem channel)
@@ -145,10 +152,13 @@
             channel = await DB.XMLTVItem.AsNoTracking().FirstOrDefaultAsync(x => x.ChannelId == channel.ChannelId);
         }
         SelectedChannel = channel;
-        var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
-        if (mapping?.M3UId > 0)
+        if (Model?.M3UId > 0)
         {
-            await PlaylistSelected(mapping.M3U);
+            if (Model.M3U.IsNull())
+            {
+                Model.M3U = await DB.M3U.AsNoTracking().FirstOrDefaultAsync(m => m.Id == Model.M3UId);
+            }
+            await PlaylistSelected(Model.M3U!);
         }
         CanSave = true;
         await SetLoaded();
@@ -160,19 +170,13 @@
         FilterItems = (await M3uUtility.Populate(playlist)).Items.OrderBy(i => i.Url).ToObservable();
         await InvokeAsync(StateHasChanged);
 
-        var mapping = await DB.Mapping
-            .Include(m => m.XMLTVItem)
-            .ThenInclude(c => c.XMLTV)
-            .Include(m => m.M3U)
-            .Include(m => m.Filters)
-            .AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
 
-        Filters = mapping?.Filters.Select(f => new FilterVM(f)).ToObservable() ?? [];
+        Filters = Model?.Filters.Select(f => new FilterVM(f)).ToObservable() ?? Filters ?? [];
 
-        if (mapping == null && SelectedChannel != null)
+        if (Model?.Id == 0 && SelectedChannel != null)
         {
             var filters = new List<FilterVM>();
-            var filtered = FilterItems.ToList();
+            var filtered = await Library.FilterHelper.DoFilter(FilterItems, Filters);
             {
                 var f = new MappingFilter
                     {
@@ -180,14 +184,11 @@
                         Invert = true,
                         FilterType = FilterType.Contains
                     };
-                filtered = await Library.FilterHelper.DoFilter(filtered, f);
-                if (filtered.Count() > 0 && FilterItems.Count() != filtered.Count)
+                var test = filtered = await Library.FilterHelper.DoFilter(filtered, f);
+                if (test.Count > 0 && test.Count < filtered.Count)
                 {
                     filters.Add(new FilterVM(f));
-                }
-                else
-                {
-                    filtered = FilterItems.ToList();
+                    filtered = test;
                 }
             }
             var values = SelectedChannel.Data.Select(kv => kv.Value).Where(v => !string.IsNullOrWhiteSpace(v));
@@ -227,8 +228,63 @@
         await InvokeAsync(StateHasChanged);
 
     }
+    public async Task Import()
+    {
+        try
+        {
+            var import = System.Text.Json.JsonSerializer.Deserialize<MappingImportVM>(ImportText);
+            if (import.IsNull()) return;
+            await SetLoading();
+            MappingImport = import;
+            Filters = import.Filters.ToObservable();
+            SelectedGuide = Guides.FirstOrDefault(g => g.Name == import.GuideName);
+            SelectedPlaylist = Playlists.FirstOrDefault(p => p.Name == import.PlaylistName);
+            if (SelectedGuide.IsNotNull())
+            {
+                var guide = SelectedGuide;
+                if (!ParsedGuides.TryGetValue(SelectedGuide.Id, out var items))
+                {
+                    items = (await XMLTVParser.Parse(await XmlTvUtility.Populate(guide))).OrderBy(c => c.ChannelId).ToList();
+                    ParsedGuides[guide.Id] = items;
+                }
+                guide.Items = items;
+                SelectedChannel = guide?.Items.FirstOrDefault(c => c.ChannelId == import.ChannelId);
+                if (SelectedChannel.IsNotNull())
+                {
+                    SelectedChannel.XMLTV = guide;
+                }
+            }
+            ImportMode = false;
+            Model = new Mapping
+                {
+                    Name = MappingImport.ChannelName,
+                    Category = MappingImport.CategoryName,
+                    Channel = MappingImport.ChannelNumber,
+                    M3U = SelectedPlaylist,
+                    M3UId = SelectedPlaylist?.Id,
+                    XMLTVItem = SelectedChannel,
+                    XMLTVItemId = SelectedChannel?.Id,
+                    Filters = Filters.Select(f => new MappingFilter
+                    {
+                        FilterContent = f.FilterContent,
+                        FilterType = f.FilterType,
+                        Invert = f.Invert
+                    }).ToList()
+                };
+            ImportText = string.Empty;
+            await Load(Model);
+        }
+        catch (Exception e)
+        {
+            ImportText = e.ToString();
+        }
+    }
 
-    public override async Task Load()
+    public override Task Load()
+    {
+        return Load(null);
+    }
+    public async Task Load(Mapping? mapping)
     {
         await SetLoading();
         CanSave = false;
@@ -240,14 +296,18 @@
         SelectedChannel = null;
         SelectedItems = null;
         SelectedPlaylist = null;
-        if (MappingId > 0)
+        Model = mapping;
+        if (Model.IsNotNull() || MappingId > 0)
         {
-            var mapping = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
-            if (mapping?.XMLTVItem != null)
+            if (MappingId > 0)
             {
-                await GuideSelected(mapping.XMLTVItem?.XMLTV);
+                Model = await DB.Mapping.Include(m => m.XMLTVItem).ThenInclude(c => c.XMLTV).Include(m => m.M3U).Include(m => m.Filters).AsNoTracking().FirstOrDefaultAsync(m => m.Id == MappingId);
             }
-            ChannelFilter = mapping.Name;
+            ChannelFilter = Model?.Name;
+            if (Model?.XMLTVItem != null)
+            {
+                await GuideSelected(Model?.XMLTVItem?.XMLTV);
+            }
         }
         Guides = await DB.XMLTV.OrderBy(g => g.Created).AsNoTracking().ToListAsync();
         Playlists = await DB.M3U.OrderBy(p => p.Created).AsNoTracking().ToListAsync();
@@ -258,13 +318,14 @@
         if (SelectedChannel.IsNotNull() && SelectedPlaylist.IsNotNull())
         {
             await SetLoading();
-            var mapping = await DB.Mapping.Include(m => m.Filters).FirstOrDefaultAsync(m => m.Id == MappingId) ?? new();
             var channel = await DB.XMLTVItem.FirstOrDefaultAsync(c => c.ChannelId == SelectedChannel.ChannelId);
             if (channel != null)
             {
-                mapping.XMLTVItemId = channel.Id;
-                mapping.M3UId = SelectedPlaylist.Id;
-                mapping.Filters.RemoveAll(f => !Filters.Any(f2 => f2.Id == f.Id));
+                Model.XMLTVItem = null;
+                Model.M3U = null;
+                Model.XMLTVItemId = channel.Id;
+                Model.M3UId = SelectedPlaylist.Id;
+                Model.Filters.RemoveAll(f => !Filters.Any(f2 => f2.Id == f.Id));
                 for (int i = 0; i < filter.Filters.Count; i++)
                 {
                     var f = filter.Filters[i];
@@ -280,19 +341,19 @@
                     }
                     else
                     {
-                        newfilter = mapping.Filters.First(f2 => f2.Id == f.Id);
+                        newfilter = Model.Filters.First(f2 => f2.Id == f.Id);
                         newfilter.FilterContent = f.FilterContent;
                         newfilter.FilterType = f.FilterType;
                         newfilter.Invert = f.Invert;
-                        mapping.Filters.Remove(newfilter);
+                        Model.Filters.Remove(newfilter);
                     }
-                    mapping.Filters.Insert(i, newfilter);
+                    Model.Filters.Insert(i, newfilter);
                 }
-                mapping.Name = !string.IsNullOrWhiteSpace(mapping.Name) ? mapping.Name : SelectedChannel.Data.Where(d => d.Key == "display-name").OrderByDescending(d => d.Key.Length)?.FirstOrDefault()?.Value ?? SelectedChannel.ChannelId;
+                Model.Name = !string.IsNullOrWhiteSpace(Model.Name) ? Model.Name : SelectedChannel.Data.Where(d => d.Key == "display-name").OrderByDescending(d => d.Key.Length)?.FirstOrDefault()?.Value ?? SelectedChannel.ChannelId;
 
-                if (mapping.Id == 0)
+                if (Model.Id == 0)
                 {
-                    await DB.Mapping.AddAsync(mapping);
+                    await DB.Mapping.AddAsync(Model);
                 }
                 await DB.SaveChangesAsync();
             }
@@ -301,7 +362,7 @@
             CanSave = false;
             Filters = [];
 
-            await OnSave.InvokeAsync(new ModalEventArgs<Mapping>(mapping));
+            await OnSave.InvokeAsync(new ModalEventArgs<Mapping>(Model));
             await SetLoaded();
         }
     }

@@ -11,7 +11,8 @@ namespace IPTVRelay.Library
 {
     public static class FilterHelper
     {
-        public static async Task<List<T>> DoFilter<T, F>(IEnumerable<T> items, IEnumerable<F> filter) where F : IFilter
+        public static async Task<List<M3UItem>> DoFilter<F>(IEnumerable<M3UItem> items, IEnumerable<F> filter) 
+            where F : IFilter
         {
             var filtered = items.ToList();
             foreach (var f in filter)
@@ -20,13 +21,17 @@ namespace IPTVRelay.Library
             }
             return filtered;
         }
-        public static async Task<List<T>> DoFilter<T>(IEnumerable<T> items, IFilter filter)
+        public static async Task<List<M3UItem>> DoFilter(IEnumerable<M3UItem> items, IFilter filter)
         {
             if (filter.FilterType == Database.Enums.FilterType.Sort)
             {
                 if (string.IsNullOrWhiteSpace(filter.FilterContent))
                 {
-                    return items.OrderBy(i => i.ToString()).ToList();
+                    return items.OrderBy(i => 
+                        i.Data.FirstOrDefault(d=>d.Key == "tvg-name")?.Value ??
+                        i.Data.FirstOrDefault(d => d.Key == "TrackTitle")?.Value ??
+                        new string([(char)byte.MaxValue]))
+                    .ToList();
                 }
                 else
                 {
@@ -35,7 +40,7 @@ namespace IPTVRelay.Library
             }
             else
             {
-                var bag = new ConcurrentBag<(T, long)>();
+                var bag = new ConcurrentBag<(M3UItem, long)>();
                 await items.ParallelForEachAsync((item, index) =>
                 {
                     if (!DoFilter(item, index, items.Count(), filter))

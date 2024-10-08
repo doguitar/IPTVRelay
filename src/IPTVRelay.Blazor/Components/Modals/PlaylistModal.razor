@@ -46,7 +46,7 @@
         <div class="row">
             <div class="col-md-12">
                 <h4>Filters</h4>
-                <Filter TItem="M3UItem" Items="ViewModel.Items" @bind-Filters="ViewModel.Filters" @bind-FilteredItems="ViewModel.FilteredItems">
+                <Filter Items="ViewModel.Items" @bind-Filters="ViewModel.Filters" @bind-FilteredItems="ViewModel.FilteredItems">
                     @if (preview)
                     {
                         var c = context.Item;

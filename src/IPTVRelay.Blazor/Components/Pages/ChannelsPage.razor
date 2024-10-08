@@ -39,8 +39,6 @@
 
 <h1>Channels</h1>
 
-
-
 <Loader IsLoading=@IsLoading>
     <div class="row">
         <div class="col-md-12">
@@ -52,8 +50,6 @@
                     <th>Name</th>
                 </HeaderColumns>
                 <HeaderButtons>
-                    <ImportButton OnClick="()=>Import()"></ImportButton>
-                    <ExportButton OnClick="()=>Export()"></ExportButton>
                     <SaveButton OnClick="()=>Save()"></SaveButton>
                     <PlayButton OnClick="Generate"></PlayButton>
                 </HeaderButtons>
@@ -81,15 +77,6 @@
     </div>
 </Loader>
 @code {
-    protected async Task Import()
-    {
-        //await JS.InvokeVoidAsync("importChannels");
-        //await Load();
-    }
-    protected async Task Export()
-    {
-        //await JS.InvokeVoidAsync("exportChannels");
-    }
 
     protected async Task<bool> CategoryKeyDown(KeyboardEventArgs args, MappingView view)
     {

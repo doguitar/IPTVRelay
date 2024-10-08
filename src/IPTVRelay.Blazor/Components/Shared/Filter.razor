@@ -1,23 +1,22 @@
 ﻿@inherits BaseComponent
 
-@typeparam TItem
 
 @code {
     private FilterVM Current = new() { Invert = true, FilterType = Database.Enums.FilterType.Contains };
 
-    [Parameter] public ObservableCollection<TItem> Items { get; set; } = [];
-    [Parameter] public List<FilterItemVM<TItem>> FilteredItems { get; set; } = [];
+    [Parameter] public ObservableCollection<M3UItem> Items { get; set; } = [];
+    [Parameter] public List<FilterItemVM<M3UItem>> FilteredItems { get; set; } = [];
     [Parameter] public ObservableCollection<FilterVM> Filters { get; set; } = [];
 
     [Parameter] public EventCallback<FilterVM> OnTest { get; set; }
     [Parameter] public EventCallback<FilterVM> OnApply { get; set; }
     [Parameter] public EventCallback<FilterVM> OnDelete { get; set; }
 
-    [Parameter] public EventCallback<List<FilterItemVM<TItem>>> FilteredItemsChanged { get; set; }
+    [Parameter] public EventCallback<List<FilterItemVM<M3UItem>>> FilteredItemsChanged { get; set; }
     [Parameter] public EventCallback<ObservableCollection<FilterVM>> FiltersChanged { get; set; }
-    [Parameter] public EventCallback<ObservableCollection<TItem>> ItemsChanged { get; set; }
+    [Parameter] public EventCallback<ObservableCollection<M3UItem>> ItemsChanged { get; set; }
 
-    [Parameter] public RenderFragment<FilterItemVM<TItem>>? ChildContent { get; set; }
+    [Parameter] public RenderFragment<FilterItemVM<M3UItem>>? ChildContent { get; set; }
 
     private Dictionary<Database.Enums.FilterType, string> FilterTypes { get; } =
         Enum.GetValues<Database.Enums.FilterType>().ToDictionary(e => e, e => e.AsString(EnumFormat.Description) ?? e.ToString());
@@ -42,7 +41,7 @@
                         <InputText class="form-control" @bind-Value="Current.FilterContent"></InputText>
                         <div class="input-group-append">
                             <div class="input-group-text">
-                                <input type="checkbox" aria-label="" checked="@(Current.Invert)">
+                                <input type="checkbox" aria-label="" checked="@(Current.Invert)" @oninput="()=>Current.Invert = !Current.Invert">
                             </div>
                             <EyeButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Test"></EyeButton>
                             <AddButton class="input-group-text" Disabled="@(Current.FilterType == Database.Enums.FilterType.None)" @onclick="Apply"></AddButton>
@@ -60,7 +59,7 @@
                     <InputText class="form-control" disabled @bind-Value="context.FilterContent"></InputText>
                     <div class="input-group-append">
                         <div class="input-group-text">
-                            <input type="checkbox" disabled checked="@(Current.Invert)" aria-label="">
+                            <input type="checkbox" checked="@(context.Invert)" aria-label="">
                         </div>
                         <DeleteButton @onclick="() => Delete(context)"></DeleteButton>
                     </div>
@@ -98,8 +97,9 @@
     private async Task FilterItemsAsync()
     {
         await SetLoading();
-        FilteredItems = (await Library.FilterHelper.DoFilter(Items, Filters)).Select(i => new FilterItemVM<TItem> { Item = i }).ToList();
+        FilteredItems = (await Library.FilterHelper.DoFilter(Items, Filters)).Select(i => new FilterItemVM<M3UItem> { Item = i }).ToList();
         await FilteredItemsChanged.InvokeAsync(FilteredItems);
+
         await SetLoaded();
     }
 
@@ -145,9 +145,13 @@
     {
         await SetLoading();
 
-        var filtered = (await Library.FilterHelper.DoFilter(FilteredItems, filter));
-        await FilteredItems.ExceptBy(filtered.Select(f => f.Id), i => i.Id).ParallelForEachAsync(i => i.Filtered = true);
-        await filtered.ParallelForEachAsync(i => i.Filtered = false);
+        var filtered = (await Library.FilterHelper.DoFilter(FilteredItems.Select(f=>f.Item), filter));
+        FilteredItems = FilteredItems.OrderBy(fi =>
+        {
+            var index = filtered.IndexOf(fi.Item);
+            fi.Filtered = index > -1;
+            return index;
+        }).ToList();
         FilteredItems = FilteredItems.OrderBy(fi => fi.Filtered).ToList();
         await SetLoaded();
     }
