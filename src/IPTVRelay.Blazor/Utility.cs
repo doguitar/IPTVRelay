@@ -320,6 +320,11 @@ namespace IPTVRelay.Blazor
                             var channelNode = doc.SelectSingleNode($"/tv/channel[@id=\"{m.XMLTVItem.ChannelId}\"]") as XmlElement;
                             var programmesNodes = doc.SelectNodes($"/tv/programme[@channel=\"{m.XMLTVItem.ChannelId}\"]");
 
+                            if (channelNode == null)
+                            {
+                                Console.WriteLine($"{m.XMLTVItem?.ChannelId} not found in XMLTVId {m.XMLTVItem?.XMLTVId} for mapping {m.Name}:");
+                                continue;
+                            }
 
                             channelNode.SetAttribute("id", previous.ToString());
 
@@ -416,6 +421,7 @@ namespace IPTVRelay.Blazor
                     {
                         var mappings = await DB.Mapping
                             .Include(m => m.XMLTVItem)
+                            .ThenInclude(x => x.XMLTV)
                             .Include(m => m.M3U)
                             .Include(m => m.Filters)
                             .OrderBy(m => m.Channel).ThenBy(m => m.Name)

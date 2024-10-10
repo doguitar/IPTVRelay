@@ -21,7 +21,7 @@ namespace IPTVRelay.Library
                 var filtered = items.ToList();
                 foreach (var f in filter)
                 {
-                    filtered = await DoFilter(filtered, f);
+                    filtered = await DoFilterInternal(filtered, f);
                 }
                 return filtered;
             }
@@ -35,6 +35,15 @@ namespace IPTVRelay.Library
             await _semaphore.WaitAsync();
             try
             {
+                return await DoFilterInternal(items, filter);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+        private static async Task<List<M3UItem>> DoFilterInternal(IEnumerable<M3UItem> items, IFilter filter)
+        {
                 if (filter.FilterType == Database.Enums.FilterType.Sort)
                 {
                     if (string.IsNullOrWhiteSpace(filter.FilterContent))
@@ -62,11 +71,6 @@ namespace IPTVRelay.Library
                     });
                     return bag.OrderBy(i => i.Item2).Select(i => i.Item1).ToList();
                 }
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
         }
 
         private static bool DoFilter<T>(T item, long index, long total, IFilter filter)

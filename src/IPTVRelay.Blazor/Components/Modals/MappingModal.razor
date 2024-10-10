@@ -325,6 +325,8 @@
                 Model.M3U = null;
                 Model.XMLTVItemId = channel.Id;
                 Model.M3UId = SelectedPlaylist.Id;
+                var removed = Model.Filters.Where(f => !Filters.Any(f2 => f2.Id == f.Id));
+                DB.RemoveRange(removed);
                 Model.Filters.RemoveAll(f => !Filters.Any(f2 => f2.Id == f.Id));
                 for (int i = 0; i < filter.Filters.Count; i++)
                 {
