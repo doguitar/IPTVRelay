@@ -15,8 +15,10 @@ namespace IPTVRelay.Database.Psql
             var configBuilder = new ConfigurationBuilder();
             configBuilder.AddEnvironmentVariables("IPTV_");
 
+            Console.WriteLine($"Args: {string.Join(", ", args)}");
             var config = new IPTVRelayPsqlConfig();
-            Parser.Default.ParseArguments(() => new IPTVRelayPsqlConfig(), args);
+            Parser.Default.ParseArguments(() => config, args);
+            Console.WriteLine($"Config: {config}");
 
             configBuilder.Build().Bind(config, o =>
             {

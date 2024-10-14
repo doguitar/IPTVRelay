@@ -19,6 +19,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		add-migration.sh = add-migration.sh
 		..\Dockerfile = ..\Dockerfile
 		..\global.json = ..\global.json
+		remove-migration.bat = remove-migration.bat
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IPTVRelay.Database.Sqlite", "IPTVRelay.Database.Sqlite\IPTVRelay.Database.Sqlite.csproj", "{9263E7CA-B95E-4AEB-8167-767376C11D9E}"
@@ -49,10 +50,6 @@ Global
 		{53C06601-353B-459A-8948-3FB4DF3B04A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{53C06601-353B-459A-8948-3FB4DF3B04A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{53C06601-353B-459A-8948-3FB4DF3B04A8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{095D2B65-67DE-41BD-B597-EAD5129FA2ED}.Release|Any CPU.Build.0 = Release|Any CPU
 		{605349ED-4B09-40B7-A529-83887E555F9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{605349ED-4B09-40B7-A529-83887E555F9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{605349ED-4B09-40B7-A529-83887E555F9E}.Release|Any CPU.ActiveCfg = Release|Any CPU

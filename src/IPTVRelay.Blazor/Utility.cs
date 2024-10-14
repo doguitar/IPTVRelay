@@ -13,6 +13,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Updogg;
 using static IPTVRelay.Blazor.Utility;
 
 namespace IPTVRelay.Blazor
@@ -203,10 +204,12 @@ namespace IPTVRelay.Blazor
         public class XmlTvUtility
         {
             public IPTVConfig Config { get; }
+            public M3uUtility M3UUtility { get; }
 
-            public XmlTvUtility(IPTVConfig config)
+            public XmlTvUtility(IPTVConfig config, M3uUtility m3UUtility)
             {
                 Config = config;
+                M3UUtility = m3UUtility;
             }
 
             public void Merge(string content, XMLTV guide, out List<XMLTVItem> removed, out List<XMLTVItem> added)
@@ -326,7 +329,7 @@ namespace IPTVRelay.Blazor
                 var programmingXml = new List<string>();
 
 
-                var playlists = new Dictionary<long, Database.Models.M3U>();
+                var playlists = new Dictionary<long, M3U>();
                 var guides = new Dictionary<long, XmlDocument>();
 
                 foreach (var g in mappings.GroupBy(m => m.Channel))
@@ -346,12 +349,12 @@ namespace IPTVRelay.Blazor
                             }
                             List<string>? channelNodes = [];
                             List<string>? programmesNodes = [];
-                            if (id == long.MaxValue)
+                            if (m.DummyMappingId > 0)
                             {
-                                Database.Models.M3U m3u;
+                                M3U m3u;
                                 if (m.M3UId.HasValue && !playlists.ContainsKey(m.M3UId.Value))
                                 {
-                                    m3u = await M3U.Populate(config, new Database.Models.M3U { Id = m.M3UId.Value });
+                                    m3u = await M3UUtility.Populate(new M3U { Id = m.M3UId.Value });
                                     playlists[id.Value] = m3u;
                                 }
                                 else
@@ -390,7 +393,7 @@ namespace IPTVRelay.Blazor
                                     if (!string.IsNullOrWhiteSpace(title) && start.HasValue)
                                     {
                                         start = new DateTime(start.Value.Year, start.Value.Month, start.Value.Day, start.Value.Hour, start.Value.Minute, 0, DateTimeKind.Local);
-                                        
+
                                         var startdate = $"{start:yyyyMMddhhmm00 +0000}";   //20240209210000 +0000
                                         int.TryParse(m.XMLTVItem.ChannelId.Replace("Dummy.", string.Empty), out var duration);
                                         var enddate = $"{start.Value.AddMinutes(duration):yyyyMMddhhmm00 +0000}";     //20240209213000 +0000
@@ -399,7 +402,7 @@ namespace IPTVRelay.Blazor
                                         programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{startdate}"" stop=""{enddate}""><title lang=""en"">{title}</title></programme>");
                                         programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{enddate}"" stop=""{futuredate}""><title lang=""en"">{offair}</title></programme>");
                                     }
-                                    else if(m.DummyMapping.IncludeBlank)
+                                    else if (m.DummyMapping.IncludeBlank)
                                     {
                                         programmesNodes.Add(@$"<programme channel=""{channelid}"" start=""{pastdate}"" stop=""{futuredate}""><title lang=""en"">{offair}</title></programme>");
                                     }
@@ -409,7 +412,7 @@ namespace IPTVRelay.Blazor
                             {
                                 if (id.HasValue && !guides.ContainsKey(id.Value))
                                 {
-                                    var xml = await Populate(config, new Database.Models.XMLTV { Id = id.Value });
+                                    var xml = await Populate(new XMLTV { Id = id.Value });
                                     doc.LoadXml(xml);
                                     guides[id.Value] = doc;
                                 }
@@ -459,7 +462,7 @@ namespace IPTVRelay.Blazor
             {
                 try
                 {
-                    var match = Regex.Match(value, expression, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+                    var match = Regex.Match(value, expression, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
                     if (match.Success)
                     {
                         return match;
@@ -473,10 +476,30 @@ namespace IPTVRelay.Blazor
                 var match = CheckExpression(mapping.DummyMapping.TimeExpression, input);
                 if (match?.Success ?? false)
                 {
-                    var output = match?.Groups[0]?.Value ?? string.Empty;
+                    var groups = match?.Groups.Values.Skip(1)
+                        .Where(g => !g.Name.IsNullOrWhiteSpace())
+                        .OrderBy(g => g.Index);
+
+                    var formatString = string.Join(string.Empty, groups
+                        .Select(g => g.Name));
+
+                    var output = string.Format(formatString, groups.Select(g => g.Value));
+
+                    if (groups.TryFirst(g => g.Name.StartsWith("h"), out var g) && int.TryParse(g?.Value, out var hour))
+                    {
+                        if (groups.TryFirst(g => g.Name.StartsWith("m"), out g) && int.TryParse(g?.Value, out var minute))
+                        {
+                            if (groups.TryFirst(g => g.Name.StartsWith("t"), out g) && g.Value.StartsWith("p"))
+                            {
+                                hour += 12;
+                            }
+                            output = $"{hour:00}:{minute:00}";
+                        }
+                    }
 
                     if (TimeOnly.TryParse(output, out var time))
                     {
+
                         var actual = DateTime.Now.Date.Add(time.ToTimeSpan()).Add(offset);
                         return actual;
                     }
@@ -531,8 +554,6 @@ namespace IPTVRelay.Blazor
             }
         }
 
-        public static class Jobs
-        {
         public class Jobs
         {
             public IPTVConfig Config { get; }
@@ -625,3 +646,4 @@ namespace IPTVRelay.Blazor
         }
     }
 }
+

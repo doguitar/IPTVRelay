@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IPTVRelay.Database.Psql.Migrations
 {
     [DbContext(typeof(IPTVRelayNpgsqlContext))]
-    [Migration("20240910190721_addDummyGuides")]
+    [Migration("20241014161505_addDummyGuides")]
     partial class addDummyGuides
     {
         /// <inheritdoc />
@@ -20,10 +20,44 @@ namespace IPTVRelay.Database.Psql.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.4")
+                .HasAnnotation("ProductVersion", "8.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("IPTVRelay.Database.Models.DummyMapping", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IncludeBlank")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("Modified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TimeExpression")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TitleExpression")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TitleFormat")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id")
+                        .IsUnique();
+
+                    b.ToTable("DummyMapping");
+                });
 
             modelBuilder.Entity("IPTVRelay.Database.Models.M3U", b =>
                 {
@@ -115,6 +149,9 @@ namespace IPTVRelay.Database.Psql.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long?>("DummyMappingId")
+                        .HasColumnType("bigint");
+
                     b.Property<long?>("M3UId")
                         .HasColumnType("bigint");
 
@@ -124,10 +161,15 @@ namespace IPTVRelay.Database.Psql.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
+                    b.Property<int>("TimeOffset")
+                        .HasColumnType("integer");
+
                     b.Property<long?>("XMLTVItemId")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DummyMappingId");
 
                     b.HasIndex("Id")
                         .IsUnique();
@@ -291,6 +333,10 @@ namespace IPTVRelay.Database.Psql.Migrations
 
             modelBuilder.Entity("IPTVRelay.Database.Models.Mapping", b =>
                 {
+                    b.HasOne("IPTVRelay.Database.Models.DummyMapping", "DummyMapping")
+                        .WithMany()
+                        .HasForeignKey("DummyMappingId");
+
                     b.HasOne("IPTVRelay.Database.Models.M3U", "M3U")
                         .WithMany()
                         .HasForeignKey("M3UId");
@@ -298,6 +344,8 @@ namespace IPTVRelay.Database.Psql.Migrations
                     b.HasOne("IPTVRelay.Database.Models.XMLTVItem", "XMLTVItem")
                         .WithMany("Mappings")
                         .HasForeignKey("XMLTVItemId");
+
+                    b.Navigation("DummyMapping");
 
                     b.Navigation("M3U");
 
