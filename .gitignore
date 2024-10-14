@@ -408,3 +408,5 @@ FodyWeavers.xsd
 /src/data
 /src/IPTVRelay.Blazor/data
 /src/remove-migration.bat
+/src/add-migration.bat
+/src/add-migration.sh
