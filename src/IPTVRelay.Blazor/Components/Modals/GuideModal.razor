@@ -46,10 +46,11 @@
             try
             {
                 DB.ChangeTracker.Clear();
-                Guide = await DB.XMLTV
+                Guide = ModelId > 0 ? await DB.XMLTV
                     .Include(g => g.Items).ThenInclude(i => i.GuideData)
                     .Where(g => g.Id == ModelId)
-                    .FirstAsync();
+                    .FirstAsync()
+                    : new XMLTV();
 
                 await XMLTVParser.Parse(uri, Guide);
                 Guide.Uri = Model.Uri = uri.AbsoluteUri;
@@ -67,16 +68,21 @@
     public override async Task Save()
     {
         await SetLoading();
-
-        if(Guide?.Id == 0)
+        if (Guide.IsNotNull())
         {
-            await DB.XMLTV.AddAsync(Guide);
-        }
+            Guide.Name = Model.Name;
+            if (Guide?.Id == 0)
+            {
+                await DB.XMLTV.AddAsync(Guide);
+            }
 
-        await DB.SaveChangesAsync();
-        DB.ChangeTracker.Clear();
-        Guide = null;
-        GC.Collect();
+            await DB.SaveChangesAsync();
+            Model.Id = ModelId = Guide!.Id;
+
+            DB.ChangeTracker.Clear();
+            Guide = null;
+            GC.Collect();
+        }
         await SetLoaded();
         await OnSave.InvokeAsync(new ModalEventArgs<GuideModalVM>(Model));
     }
@@ -100,6 +106,10 @@
                         Uri = g.Uri ?? string.Empty
                     })
                 .FirstAsync();
+        }
+        else
+        {
+            Model = new GuideModalVM();
         }
         await SetLoaded();
     }

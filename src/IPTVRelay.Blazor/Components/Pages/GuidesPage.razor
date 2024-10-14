@@ -12,7 +12,7 @@
     {
         public string? Name;
         public long Id;
-        public int Count;
+        public long Count;
         public string? Uri;
     }
     public ObservableCollection<XMLTVView> Guides { get; set; } = [];
@@ -78,8 +78,9 @@
     {
         await modal.ShowAsync<GuideModal>("Add Guide",
             parameters: new Dictionary<string, object> {
-                { nameof(GuideModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<GuideModalVM>>(this, Added) },
-                { nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) } });
+                { nameof(GuideModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<GuideModalVM>>(this, Modified) },
+                { nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) },
+                { nameof(GuideModal.ModelId), 0L }});
     }
 
     protected async Task Delete(long guideId)
@@ -96,17 +97,26 @@
     {
         await modal.ShowAsync<GuideModal>("Edit Playlist",
             parameters: new Dictionary<string, object> {
-                { nameof(GuideModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<GuideModalVM>>(this, Added) },
+                { nameof(GuideModal.OnSave), EventCallback.Factory.Create<ModalEventArgs<GuideModalVM>>(this, Modified) },
                 { nameof(GuideModal.OnCancel), EventCallback.Factory.Create(this, async (args)=> await modal.HideAsync()) },
                 { nameof(GuideModal.ModelId), guideId }});
     }
 
 
 
-    public async Task Added(ModalEventArgs<GuideModalVM> args)
+    public async Task Modified(ModalEventArgs<GuideModalVM> args)
     {
-        await SetLoading();
         await modal.HideAsync();
-        await Load();
+        var modified = Guides.FirstOrDefault(g => g.Id == args.Model.Id);
+        if (modified == null)
+        {
+            Guides.Add(new XMLTVView { Name = args.Model.Name, Id = args.Model.Id, Uri = args.Model.Uri, Count = args.Model.Count });
+        }
+        else
+        {
+            modified.Name = args.Model.Name;
+            modified.Uri = args.Model.Uri;
+            modified.Count = args.Model.Count;
+        }
     }
 }
