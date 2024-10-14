@@ -277,6 +277,28 @@ namespace IPTVRelay.Database.Psql.Migrations
                     b.ToTable("XMLTV");
                 });
 
+            modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVGuideData", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GuideData")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Modified")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("XMLTVGuideData");
+                });
+
             modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVItem", b =>
                 {
                     b.Property<long>("Id")
@@ -297,6 +319,9 @@ namespace IPTVRelay.Database.Psql.Migrations
                     b.Property<DateTime>("Modified")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("XMLTVGuideDataId")
+                        .HasColumnType("bigint");
+
                     b.Property<long>("XMLTVId")
                         .HasColumnType("bigint");
 
@@ -304,6 +329,8 @@ namespace IPTVRelay.Database.Psql.Migrations
 
                     b.HasIndex("Id")
                         .IsUnique();
+
+                    b.HasIndex("XMLTVGuideDataId");
 
                     b.HasIndex("XMLTVId");
 
@@ -360,11 +387,19 @@ namespace IPTVRelay.Database.Psql.Migrations
 
             modelBuilder.Entity("IPTVRelay.Database.Models.XMLTVItem", b =>
                 {
+                    b.HasOne("IPTVRelay.Database.Models.XMLTVGuideData", "GuideData")
+                        .WithMany()
+                        .HasForeignKey("XMLTVGuideDataId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("IPTVRelay.Database.Models.XMLTV", "XMLTV")
                         .WithMany("Items")
                         .HasForeignKey("XMLTVId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("GuideData");
 
                     b.Navigation("XMLTV");
                 });

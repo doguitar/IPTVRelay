@@ -15,6 +15,10 @@ namespace IPTVRelay.Database.Models
         [NotMapped]
         public List<XMLTVItemData> Data { get; set; } = [];
 
+
+        public long XMLTVGuideDataId { get; set; }
+
+        public virtual XMLTVGuideData? GuideData { get; set; }
         public virtual List<Mapping> Mappings { get; set; } = [];
         public virtual XMLTV? XMLTV { get; set; }
         public long XMLTVId { get; set; }
