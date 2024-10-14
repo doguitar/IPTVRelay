@@ -1,26 +1,26 @@
-﻿@inherits BaseModal<XMLTV, XMLTVEventArgs>
-
+﻿@inherits BaseModal<GuideModalVM>
 
 @code {
-    private string? Content { get; set; }
+    public XMLTV? Guide { get; set; }
 }
-<Loader IsLoading=@(IsLoading || Model.IsNull())>
 
+<Loader IsLoading=@(IsLoading || Model.IsNull())>
     <div class="row">
         <div class="col-md-12">
             <div class="input-group mb-3">
-                <InputText class="form-control" placeholder="Name" aria-label="Name" aria-describedby="basic-addon2" @bind-Value=Model!.Name></InputText>
+                <InputText class="form-control" placeholder="Name" aria-label="Name" aria-describedby="basic-addon2" @bind-Value=Model.Name></InputText>
             </div>
         </div>
     </div>
     <div class="row">
         <div class="col-md-12">
             <div class="input-group mb-3">
-                <InputText class="form-control" placeholder="XMLTV Location" aria-label="XMLTV Location" aria-describedby="basic-addon2" @bind-Value=Model!.Uri></InputText>
+                <InputText class="form-control" aria-label="XMLTV Location" aria-describedby="basic-addon2"
+                           placeholder="XMLTV Location" @bind-Value=Model.Uri></InputText>
                 <div class="input-group-append">
                     <DownloadButton OnClick="GetUri"></DownloadButton>
                 </div><div class="input-group-append">
-                    <span class="input-group-text" id="basic-addon2">@Model?.Items.Count</span>
+                    <span class="input-group-text" id="basic-addon2">@Model.Count</span>
                 </div>
             </div>
         </div>
@@ -29,38 +29,56 @@
     <div class="row">
         <div class="col-md-12">
             <div class="float-end">
-                <SaveButton OnClick="Save" Disabled="!CanSave"></SaveButton>
-                <CloseButton OnClick="Cancel" Disabled="!CanSave"></CloseButton>
+                <SaveButton OnClick="Save" Disabled="CanSave && Model.Uri == Guide?.Uri"></SaveButton>
+                <CloseButton OnClick="Cancel"></CloseButton>
             </div>
         </div>
     </div>
 </Loader>
 
 @code {
+
     protected async Task GetUri()
     {
+        await SetLoading();
         if (Uri.TryCreate(Model?.Uri, UriKind.Absolute, out var uri))
         {
-            var canSave = false;
-            await SetLoading();
-            Content = await XmlTvUtility.Populate(Model);
-            if (Content != null)
+            try
             {
-                var items = await XMLTVParser.Parse(Content);
-                if (items != null)
-                {
-                    Model.Items = items;
-                    canSave = true;
-                }
+                DB.ChangeTracker.Clear();
+                Guide = await DB.XMLTV
+                    .Include(g => g.Items).ThenInclude(i => i.GuideData)
+                    .Where(g => g.Id == ModelId)
+                    .FirstAsync();
+
+                await XMLTVParser.Parse(uri, Guide);
+                Guide.Uri = Model.Uri = uri.AbsoluteUri;
+                Model.Count = Guide.Items.Count;
+                CanSave = Model.Count > 0;
             }
-            CanSave = canSave;
-            await SetLoaded();
+            catch (Exception e)
+            {
+                //await SetError(e.Message);
+            }
         }
+        await SetLoaded();
     }
 
     public override async Task Save()
     {
-        await OnSave.InvokeAsync(new XMLTVEventArgs(Model, Content));
+        await SetLoading();
+
+        if(Guide?.Id == 0)
+        {
+            await DB.XMLTV.AddAsync(Guide);
+        }
+
+        await DB.SaveChangesAsync();
+        DB.ChangeTracker.Clear();
+        Guide = null;
+        GC.Collect();
+        await SetLoaded();
+        await OnSave.InvokeAsync(new ModalEventArgs<GuideModalVM>(Model));
     }
     public override async Task Cancel()
     {
@@ -69,23 +87,19 @@
     public override async Task Load()
     {
         await SetLoading();
-
         if (ModelId > 0)
         {
-            Model = await DB.XMLTV.FirstOrDefaultAsync(m => m.Id == ModelId) ?? new XMLTV();
-            Content = await XmlTvUtility.Populate(Model);
-            if (Content != null)
-            {
-                var items = await XMLTVParser.Parse(Content);
-                if (items != null)
-                {
-                    Model.Items = items;
-                }
-            }
-        }
-        else
-        {
-            Model = new XMLTV();
+            Model = await DB.XMLTV.AsNoTracking()
+                .Include(g => g.Items)
+                .Where(g => g.Id == ModelId)
+                .Select(g => new GuideModalVM
+                    {
+                        Count = g.Items == null ? 0 : g.Items.Count,
+                        Id = g.Id,
+                        Name = g.Name ?? string.Empty,
+                        Uri = g.Uri ?? string.Empty
+                    })
+                .FirstAsync();
         }
         await SetLoaded();
     }

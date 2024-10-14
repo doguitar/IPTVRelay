@@ -8,8 +8,9 @@ namespace IPTVRelay.Test
         public async void Parse()
         {
             var file = new FileInfo("data/DIRECTV-San-Diego.xml");
-            var items = await XMLTVParser.Parse(new Uri($"file:///{file.FullName.Replace("\\","/")}"));
-            Assert.NotNull(items);
+            var guide = new Database.Models.XMLTV();
+            await XMLTVParser.Parse(new Uri($"file:///{file.FullName.Replace("\\","/")}"), guide);
+            Assert.NotNull(guide.Items);
         }
     }
 }

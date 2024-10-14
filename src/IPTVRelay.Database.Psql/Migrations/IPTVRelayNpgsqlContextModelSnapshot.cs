@@ -313,13 +313,16 @@ namespace IPTVRelay.Database.Psql.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text");
+
                     b.Property<string>("Logo")
                         .HasColumnType("text");
 
                     b.Property<DateTime>("Modified")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("XMLTVGuideDataId")
+                    b.Property<long?>("XMLTVGuideDataId")
                         .HasColumnType("bigint");
 
                     b.Property<long>("XMLTVId")
@@ -389,9 +392,7 @@ namespace IPTVRelay.Database.Psql.Migrations
                 {
                     b.HasOne("IPTVRelay.Database.Models.XMLTVGuideData", "GuideData")
                         .WithMany()
-                        .HasForeignKey("XMLTVGuideDataId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("XMLTVGuideDataId");
 
                     b.HasOne("IPTVRelay.Database.Models.XMLTV", "XMLTV")
                         .WithMany("Items")

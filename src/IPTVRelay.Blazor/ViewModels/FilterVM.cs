@@ -8,7 +8,7 @@ namespace IPTVRelay.Blazor.ViewModels
         public long Id { get; set; } = 0;
         public bool Invert { get; set; } = true;
         public FilterType FilterType { get; set; } = FilterType.Contains;
-        public string FilterContent { get; set; } = string.Empty;
+        public string? FilterContent { get; set; } = string.Empty;
 
 
         public FilterVM()

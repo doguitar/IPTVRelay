@@ -86,9 +86,6 @@ namespace IPTVRelay.Blazor
                 }))
                 .AddHangfireServer()
                 .AddSingleton(config)
-                .AddSingleton<Utility.XmlTvUtility>()
-                .AddSingleton<Utility.M3uUtility>()
-                .AddSingleton<Utility.Jobs>()
                 .AddBlazorBootstrap()
                 .AddRazorComponents()
                 .AddInteractiveServerComponents()
@@ -127,7 +124,10 @@ namespace IPTVRelay.Blazor
                     break;
             }
 
-
+            builder.Services
+                .AddScoped<Utility.XmlTvUtility>()
+                .AddScoped<Utility.M3uUtility>()
+                .AddScoped<Utility.Jobs>();
 
             var app = builder.Build();
 

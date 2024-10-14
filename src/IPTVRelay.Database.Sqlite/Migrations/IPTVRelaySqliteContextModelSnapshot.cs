@@ -288,13 +288,16 @@ namespace IPTVRelay.Database.Sqlite.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Logo")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Modified")
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("XMLTVGuideDataId")
+                    b.Property<long?>("XMLTVGuideDataId")
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("XMLTVId")
@@ -364,9 +367,7 @@ namespace IPTVRelay.Database.Sqlite.Migrations
                 {
                     b.HasOne("IPTVRelay.Database.Models.XMLTVGuideData", "GuideData")
                         .WithMany()
-                        .HasForeignKey("XMLTVGuideDataId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("XMLTVGuideDataId");
 
                     b.HasOne("IPTVRelay.Database.Models.XMLTV", "XMLTV")
                         .WithMany("Items")

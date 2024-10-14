@@ -8,13 +8,15 @@ using System.Threading.Tasks;
 
 namespace IPTVRelay.Library.Components
 {
-    public abstract class BaseModal<T, E> : BaseComponent where E : EventArgs
+    public abstract class BaseModal<T, E> : BaseComponent 
+        where E : EventArgs
+        where T : new()
     {
         private long modelId;
 
         [Parameter] public EventCallback OnCancel { get; set; }
         [Parameter] public EventCallback<E> OnSave { get; set; }
-        [Parameter] public long ModelId { get => modelId; set { modelId = value; Reload = true; } }
+        [Parameter] public long ModelId { get; set; }
         [Parameter] public RenderFragment? ChildContent { get; set; }
         [Parameter] public string LoadingMessage { get; set; } = "Loading...";
 
@@ -23,7 +25,7 @@ namespace IPTVRelay.Library.Components
 
         private bool Initialized { get; set; }
 
-        protected T? Model { get; set; }
+        protected T Model { get; set; } = new T();
 
         protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
@@ -66,6 +68,7 @@ namespace IPTVRelay.Library.Components
 
     }
     public abstract class BaseModal<T> : BaseModal<T, ModalEventArgs<T>>
+        where T : new()
     {
         public override async Task Save()
         {

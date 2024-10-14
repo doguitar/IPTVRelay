@@ -204,47 +204,14 @@ namespace IPTVRelay.Blazor
         public class XmlTvUtility
         {
             public IPTVConfig Config { get; }
+            public IPTVRelayContext DB { get; }
             public M3uUtility M3UUtility { get; }
 
-            public XmlTvUtility(IPTVConfig config, M3uUtility m3UUtility)
+            public XmlTvUtility(IPTVConfig config, IPTVRelayContext context, M3uUtility m3UUtility)
             {
                 Config = config;
+                DB = context;
                 M3UUtility = m3UUtility;
-            }
-
-            public void Merge(string content, XMLTV guide, out List<XMLTVItem> removed, out List<XMLTVItem> added)
-            {
-                removed = new List<XMLTVItem>();
-                added = new List<XMLTVItem>();
-
-                var items = XMLTVParser.Parse(content).GetAwaiter().GetResult();
-                var dict = items.ToDictionary(i => i.ChannelId, i => i);
-                for (var i = 0; i < guide.Items.Count; i++)
-                {
-                    if (!dict.ContainsKey(guide.Items[i].ChannelId))
-                    {
-                        removed.Add(guide.Items[i]);
-                        guide.Items.RemoveAt(i);
-                        i--;
-                    }
-                    else
-                    {
-                        items[i].Data.AddRange(dict[items[i].ChannelId].Data);
-                    }
-                }
-                dict = guide.Items.ToDictionary(i => i.ChannelId, i => i);
-                for (var i = 0; i < items.Count; i++)
-                {
-                    if (!dict.ContainsKey(items[i].ChannelId))
-                    {
-                        guide.Items.Add(items[i]);
-                        added.Add(items[i]);
-                    }
-                    else
-                    {
-                        items[i].Data.AddRange(dict[items[i].ChannelId].Data);
-                    }
-                }
             }
 
             public FileInfo GetFileInfo(XMLTV guide)
@@ -266,18 +233,18 @@ namespace IPTVRelay.Blazor
 
                 return fileInfo;
             }
-            public async Task<string> Populate(XMLTV guide, bool refresh = false, bool applyFilters = true)
+            public async Task Populate(XMLTV guide, bool refresh = false, bool applyFilters = true)
             {
-                if (guide.Id == long.MaxValue) return null;
+                if (guide.Id == long.MaxValue) return;
                 var file = GetFileInfo(guide);
                 if (!file.Exists) { refresh = true; }
                 if (refresh)
                 {
-                    return await XMLTVParser.Parse(new Uri(guide.Uri));
+                    await XMLTVParser.Parse(new Uri(guide.Uri), guide);
                 }
                 else
                 {
-                    return await XMLTVParser.Parse(new Uri($"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"));
+                    await XMLTVParser.Parse(new Uri($"file://{file.FullName.Replace(Path.DirectorySeparatorChar, '/')}"), guide);
                 }
             }
             public async Task<FileInfo> WriteToDisk(XMLTV guide, string content)
@@ -330,7 +297,7 @@ namespace IPTVRelay.Blazor
 
 
                 var playlists = new Dictionary<long, M3U>();
-                var guides = new Dictionary<long, XmlDocument>();
+                var guides = new Dictionary<long, XMLTV>();
 
                 foreach (var g in mappings.GroupBy(m => m.Channel))
                 {
@@ -410,30 +377,30 @@ namespace IPTVRelay.Blazor
                             }
                             else if (m?.XMLTVItem != null)
                             {
-                                if (id.HasValue && !guides.ContainsKey(id.Value))
+                                if (id.HasValue)
                                 {
-                                    var xml = await Populate(new XMLTV { Id = id.Value });
-                                    doc.LoadXml(xml);
-                                    guides[id.Value] = doc;
-                                }
-                                else
-                                {
-                                    doc = guides[id.Value];
-                                }
+                                    if (!guides.TryGetValue(id.Value, out var guide))
+                                    {
+                                        guide = await DB.XMLTV
+                                            .Include(g => g.Items).ThenInclude(i => i.GuideData)
+                                            .FirstAsync(g => g.Id == id.Value);
 
-                                var element = (doc.SelectSingleNode($"/tv/channel[@id=\"{m.XMLTVItem.ChannelId}\"]") as XmlElement);
-                                element?.SetAttribute("id", m.Id.ToString());
-
-                                channelNodes.Add(element?.OuterXml);
-                                programmesNodes.AddRange(doc.SelectNodes($"/tv/programme[@channel=\"{m.XMLTVItem.ChannelId}\"]").Cast<XmlElement>().Select(n =>
-                                {
-                                    n.SetAttribute("channel", m.Id.ToString());
-                                    return n.OuterXml;
-                                }));
+                                        guides[id.Value] = guide;
+                                    }
+                                channelNodes.Add(@$"
+<channel id=""{m.Id}"">
+    <display-name>{m.Name}</display-name>
+    <icon src=""{m.XMLTVItem.Logo}"" height=""270"" width=""360""></icon>
+</channel>");
+                                    var programmes = guide.Items
+                                            .Where(i => i.ChannelId == m.XMLTVItem.ChannelId)
+                                            .Where(i => !string.IsNullOrWhiteSpace(i.GuideData?.GuideData))
+                                            .Select(i => i.GuideData!.GuideData!);
+                                    programmesNodes.AddRange(programmes);
+                                }
                             }
                             if (channelNodes != null && programmesNodes != null)
                             {
-
                                 channelsXml.AddRange(channelNodes);
                                 programmingXml.AddRange(programmesNodes);
                             }
@@ -592,30 +559,20 @@ namespace IPTVRelay.Blazor
                     }
                     DB.ChangeTracker.Clear();
                     {
-                        var guides = await DB.XMLTV.Include(g => g.Items).ThenInclude(i => i.Mappings).ToListAsync();
+                        var guides = await DB.XMLTV
+                            .Include(g => g.Items).ThenInclude(i => i.Mappings)
+                            .Include(g => g.Items).ThenInclude(i => i.GuideData)
+                            .ToListAsync();
                         foreach (var guide in guides)
                         {
-                            XMLTV newGuide = new();
-                            string content = string.Empty;
                             try
                             {
-                                content = await XmlTvUtility.Populate(guide, refresh: true, applyFilters: true);
-                                newGuide.Items = await XMLTVParser.Parse(content);
+                                if(Uri.TryCreate(guide.Uri, UriKind.Absolute, out var uri))
+                                {
+                                    await XMLTVParser.Parse(uri, guide);
+                                }
                             }
                             catch { continue; }
-                            var removed = guide.Items.ExceptBy(newGuide.Items.Select(i => i.ChannelId), i => i.ChannelId).ToList();
-                            var added = newGuide.Items.ExceptBy(guide.Items.Select(i => i.ChannelId), x => x.ChannelId).ToList();
-
-                            if (removed.Any() || added.Any())
-                            {
-                                guide.Items.RemoveAll(i => removed.Any(r => r.ChannelId == i.ChannelId));
-                                DB.RemoveRange(removed);
-                                guide.Items.AddRange(added);
-                                added.ForEach(a => a.XMLTVId = guide.Id);
-                                await DB.SaveChangesAsync();
-                            }
-
-                            await XmlTvUtility.WriteToDisk(guide, content);
                         }
                     }
                     DB.ChangeTracker.Clear();

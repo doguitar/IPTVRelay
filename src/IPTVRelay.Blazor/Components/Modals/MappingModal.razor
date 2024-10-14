@@ -64,7 +64,7 @@
                     <div>Filter: <InputText @bind-Value=ChannelFilter></InputText></div>
                     @if (ChannelFilter?.Length > 0)
                     {
-                        foreach (var c in SelectedGuide.Items.Where(i => string.IsNullOrWhiteSpace(ChannelFilter) || i.ChannelId.ToLowerInvariant().Contains(ChannelFilter.ToLowerInvariant()) ||  i.Data.Any(kv => kv.Value.ToLowerInvariant().Contains(ChannelFilter.ToLowerInvariant()))))
+                        foreach (var c in SelectedGuide.Items.Where(i => string.IsNullOrWhiteSpace(ChannelFilter) || i.ChannelId.ToLowerInvariant().Contains(ChannelFilter.ToLowerInvariant()) || i.Data.Any(kv => kv.Value.ToLowerInvariant().Contains(ChannelFilter.ToLowerInvariant()))))
                         {
                             <div style="font-weight:bold;">
                                 <Button @onclick=@(()=>ChannelSelected(c)) Color="BlazorBootstrap.ButtonColor.Primary" Size="Size.Small" Outline="true">@c.ChannelId</Button>
@@ -129,20 +129,8 @@
     {
         await SetLoading();
 
-        if (!ParsedGuides.TryGetValue(guide.Id, out var items))
-        {
-            if (guide.Name == Database.Constants.DUMMY_MAPPING)
-            {
-                items = await DB.XMLTVItem.Where(x => x.XMLTVId == guide.Id).ToListAsync();
-                ChannelFilter = Database.Constants.DUMMY_MAPPING;
-            }
-            else
-            {
-                items = (await XMLTVParser.Parse(await XmlTvUtility.Populate(guide))).OrderBy(c => c.ChannelId).ToList();
-            }
-            ParsedGuides[guide.Id] = items;
-        }
-        guide.Items = items;
+        await DB.Entry(guide).Collection(g => g.Items).LoadAsync();
+
         SelectedGuide = guide;
 
         var channel = SelectedGuide.Items.Where(i => i.ChannelId == Model?.XMLTVItem?.ChannelId).FirstOrDefault();
@@ -251,12 +239,7 @@
             if (SelectedGuide.IsNotNull())
             {
                 var guide = SelectedGuide;
-                if (!ParsedGuides.TryGetValue(SelectedGuide.Id, out var items))
-                {
-                    items = (await XMLTVParser.Parse(await XmlTvUtility.Populate(guide))).OrderBy(c => c.ChannelId).ToList();
-                    ParsedGuides[guide.Id] = items;
-                }
-                guide.Items = items;
+                await DB.Entry(guide).Collection(g => g.Items).LoadAsync();
                 SelectedChannel = guide?.Items.FirstOrDefault(c => c.ChannelId == import.ChannelId);
                 if (SelectedChannel.IsNotNull())
                 {

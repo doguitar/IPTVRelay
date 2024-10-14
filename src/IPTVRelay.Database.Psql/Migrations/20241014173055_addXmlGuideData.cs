@@ -1,9 +1,10 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace IPTVRelay.Database.Sqlite.Migrations
+namespace IPTVRelay.Database.Psql.Migrations
 {
     /// <inheritdoc />
     public partial class addXmlGuideData : Migration
@@ -14,19 +15,18 @@ namespace IPTVRelay.Database.Sqlite.Migrations
             migrationBuilder.AddColumn<long>(
                 name: "XMLTVGuideDataId",
                 table: "XMLTVItem",
-                type: "INTEGER",
-                nullable: false,
-                defaultValue: 0L);
+                type: "bigint",
+                nullable: true);
 
             migrationBuilder.CreateTable(
                 name: "XMLTVGuideData",
                 columns: table => new
                 {
-                    Id = table.Column<long>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    GuideData = table.Column<string>(type: "TEXT", nullable: true),
-                    Created = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    Modified = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    GuideData = table.Column<string>(type: "text", nullable: true),
+                    Created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Modified = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -43,8 +43,7 @@ namespace IPTVRelay.Database.Sqlite.Migrations
                 table: "XMLTVItem",
                 column: "XMLTVGuideDataId",
                 principalTable: "XMLTVGuideData",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+                principalColumn: "Id");
         }
 
         /// <inheritdoc />

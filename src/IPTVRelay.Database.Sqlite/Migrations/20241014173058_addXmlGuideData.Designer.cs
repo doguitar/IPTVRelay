@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IPTVRelay.Database.Sqlite.Migrations
 {
     [DbContext(typeof(IPTVRelaySqliteContext))]
-    [Migration("20241014162506_addXmlGuideData")]
+    [Migration("20241014173058_addXmlGuideData")]
     partial class addXmlGuideData
     {
         /// <inheritdoc />
@@ -297,7 +297,7 @@ namespace IPTVRelay.Database.Sqlite.Migrations
                     b.Property<DateTime>("Modified")
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("XMLTVGuideDataId")
+                    b.Property<long?>("XMLTVGuideDataId")
                         .HasColumnType("INTEGER");
 
                     b.Property<long>("XMLTVId")
@@ -367,9 +367,7 @@ namespace IPTVRelay.Database.Sqlite.Migrations
                 {
                     b.HasOne("IPTVRelay.Database.Models.XMLTVGuideData", "GuideData")
                         .WithMany()
-                        .HasForeignKey("XMLTVGuideDataId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("XMLTVGuideDataId");
 
                     b.HasOne("IPTVRelay.Database.Models.XMLTV", "XMLTV")
                         .WithMany("Items")
